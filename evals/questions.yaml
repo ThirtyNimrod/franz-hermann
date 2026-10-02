@@ -1,0 +1,23 @@
+- id: seg-01
+  session_id: 2024_99_FP2
+  question: "In 2024_99_FP2, in which segment between teammates did NOR gain time over PIA on push laps?"
+  answer: "start-T1"
+  check: contains
+
+- id: deg-01
+  session_id: 2024_99_FP2
+  question: "In 2024_99_FP2, what was the tyre degradation rate for NOR on MEDIUM tyres?"
+  answer: "0.08"
+  check: contains
+
+- id: corner-01
+  session_id: 2024_99_FP2
+  question: "In 2024_99_FP2, what was the minimum apex speed of NOR in corner T1?"
+  answer: "120"
+  check: contains
+
+- id: energy-01
+  session_id: 2024_99_FP2
+  question: "In 2024_99_FP2, did McLaren's NOR exhibit energy clipping after T1?"
+  answer: "True"
+  check: contains

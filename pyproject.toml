@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "f1-ai"
+version = "2.0.0"
+description = "Formula 1 AI Race Engineer — Deterministic Telemetry & Local LLM Debrief Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastf1",
+    "duckdb",
+    "pyarrow",
+    "pandas",
+    "numpy",
+    "scipy",
+    "pydantic>=2.0",
+    "mcp[cli]<2",
+    "ollama",
+    "httpx",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

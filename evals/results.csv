@@ -1,0 +1,2 @@
+model,ollama_version,think,accuracy,tool_call_error_rate,avg_seconds_per_question,total_questions
+qwen3.5:4b,0.35.1,False,0.750,0.000,100.39,4
