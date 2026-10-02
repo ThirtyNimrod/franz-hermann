@@ -20,6 +20,8 @@ dependencies = [
     "ollama",
     "httpx",
     "pyyaml",
+    "fastapi",
+    "uvicorn",
 ]
 
 [project.optional-dependencies]
