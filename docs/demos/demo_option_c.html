@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F1 AI Race Engineer — Option C Pit Wall Console (Nothing Design System)</title>
+  <!-- Google Fonts: Doto, Space Grotesk, Space Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Doto:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* Nothing Design System Option C Tokens */
+    :root, [data-theme="light"] {
+      --bg: #F4F4F2;
+      --surface: #FFFFFF;
+      --surface-raised: #EBEBE8;
+      --surface-overlay: rgba(255, 255, 255, 0.94);
+      --border: #E0E0DC;
+      --border-strong: #C4C4BF;
+      --border-visible: #D2D2CD;
+      --text-display: #000000;
+      --text-primary: #1A1A1A;
+      --text-secondary: #666666;
+      --text-disabled: #999999;
+      --accent: #D71921;
+      --accent-subtle: rgba(215, 25, 33, 0.12);
+      --success: #2E7D32;
+      --warning: #B78103;
+      --font-display: "Doto", "Space Mono", monospace;
+      --font-body: "Space Grotesk", system-ui, sans-serif;
+      --font-mono: "Space Mono", monospace;
+      --header-height: 38px;
+      --transponder-height: 44px;
+      --radius-card: 8px;
+      --radius-cassette: 6px;
+      --radius-tech: 4px;
+      --radius-pill: 999px;
+      --trans-speed: 140ms cubic-bezier(0.2, 0.0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg: #000000;
+      --surface: #0E0E0E;
+      --surface-raised: #181818;
+      --surface-overlay: rgba(14, 14, 14, 0.96);
+      --border: #222222;
+      --border-strong: #333333;
+      --border-visible: #2A2A2A;
+      --text-display: #FFFFFF;
+      --text-primary: #ECECEC;
+      --text-secondary: #888888;
+      --text-disabled: #555555;
+      --accent-subtle: rgba(215, 25, 33, 0.22);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 13px;
+      line-height: 1.4;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Pinned Compact Header (38px) */
+    .app-header {
+      height: var(--header-height);
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border-visible);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      z-index: 100;
+    }
+
+    .brand-cluster {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: var(--text-display);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--accent);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .header-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctrl-pill {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: var(--radius-tech);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-pill {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--trans-speed);
+    }
+    .btn-pill:hover { color: var(--text-display); border-color: var(--text-display); }
+
+    /* Main Console Area (Option C: Full-Width on <= 1500px, 3:2, Surface Laptop 3) */
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 1920px;
+      width: 100%;
+      margin: 0 auto;
+      height: calc(100vh - var(--header-height) - var(--transponder-height));
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Stepper & Driver Cassettes Deck */
+    .telemetry-deck {
+      background-color: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: var(--radius-card);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .corner-stepper {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .corner-step-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      min-width: 44px;
+      padding: 3px 10px;
+      border-radius: var(--radius-tech);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--trans-speed);
+      text-align: center;
+    }
+
+    .corner-step-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .corner-step-btn.active {
+      background-color: var(--text-display);
+      color: var(--bg);
+      border-color: var(--text-display);
+      font-weight: 700;
+    }
+
+    /* Horizontal Driver Cassettes */
+    .driver-cassette-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .driver-cassette {
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-cassette);
+      padding: 8px 12px;
+      display: grid;
+      grid-template-columns: 125px 1fr;
+      gap: 12px;
+      align-items: center;
+      min-height: 80px;
+    }
+
+    .cassette-hero {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid var(--border);
+      padding-right: 10px;
+    }
+
+    .driver-id-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+
+    .driver-code {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text-display);
+      line-height: 1;
+    }
+
+    .driver-style-badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid var(--border-strong);
+      padding: 1px 5px;
+      border-radius: var(--radius-pill);
+      color: var(--text-secondary);
+    }
+
+    .apex-speed-val {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text-display);
+      margin-top: 3px;
+    }
+
+    .apex-speed-meta {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-disabled);
+      margin-top: 2px;
+    }
+
+    .cassette-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brake-indicator-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .seg-led-bar {
+      display: flex;
+      gap: 2px;
+      height: 6px;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .led-block {
+      flex: 1;
+      background-color: var(--border);
+      border-radius: 1px;
+    }
+
+    .led-block.on {
+      background-color: var(--text-display);
+    }
+
+    .stats-micro-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .stats-micro-val {
+      color: var(--text-display);
+      font-weight: 700;
+    }
+
+    /* Full-Width Telemetry & Strategy Analyzer Deck */
+    .analyzer-deck {
+      background-color: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: var(--radius-card);
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .analyzer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px;
+      flex-shrink: 0;
+    }
+
+    .analyzer-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--trans-speed);
+    }
+
+    .tab-btn.active {
+      background-color: var(--surface-raised);
+      border-color: var(--border-strong);
+      color: var(--text-display);
+      font-weight: 700;
+    }
+
+    .table-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .f1-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .f1-table th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-strong);
+      color: var(--text-secondary);
+      font-size: 10px;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 6px 10px;
+      z-index: 1;
+    }
+
+    .f1-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .f1-table tr:hover {
+      background-color: var(--surface-raised);
+    }
+
+    .f1-table th.num, .f1-table td.num {
+      text-align: right;
+    }
+
+    /* Pinned Bottom Radio Transponder Bar (44px) */
+    .transponder-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--transponder-height);
+      background-color: var(--surface);
+      border-top: 1px solid var(--border-visible);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      flex-shrink: 0;
+      z-index: 100;
+      font-family: var(--font-mono);
+    }
+
+    .transponder-ticker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .ticker-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--success);
+      border: 1px solid var(--success);
+      padding: 2px 6px;
+      border-radius: var(--radius-tech);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .ticker-pulse {
+      width: 5px;
+      height: 5px;
+      background-color: var(--success);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 1.8s infinite;
+    }
+
+    .ticker-text {
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .ticker-expand-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid var(--border-visible);
+      border-radius: var(--radius-pill);
+      padding: 3px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--trans-speed);
+    }
+    .ticker-expand-btn:hover { color: var(--text-display); border-color: var(--text-display); }
+
+    .transponder-quick-input {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: 12px;
+    }
+
+    .quick-input {
+      width: 220px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border-visible);
+      color: var(--text-display);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      outline: none;
+      transition: width 150ms ease;
+    }
+    .quick-input:focus { border-color: var(--text-display); width: 280px; }
+
+    .quick-btn {
+      background: var(--text-display);
+      color: var(--bg);
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+    }
+
+    /* Slide-Up Comms Sheet / Drawer (65vh Overlay) */
+    .comms-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+      z-index: 98;
+    }
+    .comms-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .comms-drawer {
+      position: fixed;
+      bottom: var(--transponder-height);
+      left: 0;
+      right: 0;
+      height: 65vh;
+      max-height: calc(100vh - 82px);
+      background-color: var(--surface-overlay);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border-visible);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 99;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.25);
+    }
+    .comms-drawer.open { transform: translateY(0); }
+
+    .drawer-header {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .drawer-stream {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .drawer-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .chat-bubble {
+      padding: 8px 12px;
+      border-radius: var(--radius-cassette);
+      font-size: 12px;
+      max-width: 82%;
+      line-height: 1.45;
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+    }
+
+    .bubble-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-disabled);
+    }
+
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .chip-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--trans-speed);
+    }
+    .chip-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+
+    /* Interactive Deep-Link Anchor Chips */
+    .chip-anchor {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--accent-subtle);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: var(--radius-tech);
+      cursor: pointer;
+      vertical-align: middle;
+      transition: var(--trans-speed);
+      text-decoration: none;
+    }
+    .chip-anchor:hover { background: var(--accent); color: #FFFFFF; }
+
+    @keyframes rowFlash {
+      0% { background-color: var(--accent-subtle); }
+      100% { background-color: transparent; }
+    }
+    .flash-highlight { animation: rowFlash 2s cubic-bezier(0.2, 0, 0.2, 1) forwards !important; }
+
+    /* Adaptive Widescreen Docking (Alienware M15 R2 / 16:9 / 16:10 >= 1500px) */
+    @media (min-width: 1500px) and (min-aspect-ratio: 16/10) {
+      .workspace {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        height: calc(100vh - var(--header-height));
+        gap: 12px;
+        padding: 8px 16px 16px 16px;
+      }
+      #transponder-mount {
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .transponder-bar { display: none !important; }
+      .comms-backdrop { display: none !important; }
+      .comms-drawer {
+        position: static;
+        height: 100%;
+        max-height: none;
+        transform: none !important;
+        border-top: none;
+        border-left: 1px solid var(--border-visible);
+        box-shadow: none;
+        backdrop-filter: none;
+        background-color: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border-visible);
+      }
+      .ticker-expand-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Pinned Compact Header (38px) -->
+  <header class="app-header">
+    <div class="brand-cluster">
+      <span class="pulse-dot"></span>
+      <span>F1 AI RACE ENGINEER // PIT WALL</span>
+    </div>
+
+    <div class="header-ctrls">
+      <select id="session-select" class="ctrl-pill">
+        <option value="2026_01_R">2026_01_R (Australian GP - Race)</option>
+        <option value="2026_01_FP2">2026_01_FP2 (Australian GP - Practice 2)</option>
+      </select>
+
+      <select id="team-select" class="ctrl-pill">
+        <option value="McLaren">McLaren [PIA / NOR]</option>
+        <option value="Ferrari">Ferrari [LEC / HAM]</option>
+        <option value="Mercedes">Mercedes [RUS / ANT]</option>
+        <option value="Red Bull">Red Bull [VER / LAW]</option>
+        <option value="Williams">Williams [ALB / SAI]</option>
+        <option value="Audi">Audi [HUL / BOR]</option>
+        <option value="Cadillac">Cadillac [BOT / PER]</option>
+      </select>
+
+      <select id="run-select" class="ctrl-pill">
+        <option value="long_run">LONG RUN (RACE SIM)</option>
+        <option value="push">PUSH (QUALIFYING)</option>
+      </select>
+
+      <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary);">
+        UTC: <span id="clock-display" style="font-weight: 700; color: var(--text-display);">14:32:05</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Main Console (Option C Full-Width Deck on Surface Laptop 3) -->
+  <main class="workspace">
+    <!-- Left / Primary Workspace Deck -->
+    <div style="display:flex; flex-direction:column; gap:8px; height:100%; min-height:0;">
+      
+      <!-- Stepper & Horizontal Driver Cassettes -->
+      <section class="telemetry-deck">
+        <div class="corner-stepper" id="corner-stepper"></div>
+
+        <div class="driver-cassette-grid">
+          <!-- Driver A Cassette -->
+          <div class="driver-cassette" id="cassette-d1">
+            <div class="cassette-hero">
+              <div class="driver-id-row">
+                <span class="driver-code" id="d1-code">PIA</span>
+                <span class="driver-style-badge" id="d1-badge">V-STYLE</span>
+              </div>
+              <div class="apex-speed-val" id="d1-apex">165</div>
+              <div class="apex-speed-meta" id="d1-meta">KM/H · IQR ±2.4 (52 L)</div>
+            </div>
+            <div class="cassette-stats">
+              <div class="brake-indicator-row">
+                <span>BRAKE ONSET</span>
+                <span style="font-weight:700; color:var(--text-display);" id="d1-brake">78.9 M BEFORE</span>
+              </div>
+              <div class="seg-led-bar" id="d1-leds">
+                <div class="led-block on"></div><div class="led-block on"></div><div class="led-block on"></div>
+                <div class="led-block on"></div><div class="led-block on"></div><div class="led-block on"></div>
+                <div class="led-block"></div><div class="led-block"></div><div class="led-block"></div><div class="led-block"></div>
+              </div>
+              <div class="stats-micro-row">
+                <span>FULL THROTTLE: <span class="stats-micro-val" id="d1-thr">72.4 M</span></span>
+                <span>DECEL: <span class="stats-micro-val" id="d1-decel">4.62 G</span></span>
+                <span>DWELL: <span class="stats-micro-val" id="d1-dwell">0.18</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Driver B Cassette -->
+          <div class="driver-cassette" id="cassette-d2">
+            <div class="cassette-hero">
+              <div class="driver-id-row">
+                <span class="driver-code" id="d2-code">NOR</span>
+                <span class="driver-style-badge" id="d2-badge">V-STYLE</span>
+              </div>
+              <div class="apex-speed-val" id="d2-apex">161</div>
+              <div class="apex-speed-meta" id="d2-meta">KM/H · IQR ±3.1 (52 L)</div>
+            </div>
+            <div class="cassette-stats">
+              <div class="brake-indicator-row">
+                <span>BRAKE ONSET</span>
+                <span style="font-weight:700; color:var(--text-display);" id="d2-brake">94.4 M BEFORE</span>
+              </div>
+              <div class="seg-led-bar" id="d2-leds">
+                <div class="led-block on"></div><div class="led-block on"></div><div class="led-block on"></div>
+                <div class="led-block on"></div><div class="led-block on"></div><div class="led-block on"></div>
+                <div class="led-block on"></div><div class="led-block on"></div><div class="led-block"></div><div class="led-block"></div>
+              </div>
+              <div class="stats-micro-row">
+                <span>FULL THROTTLE: <span class="stats-micro-val" id="d2-thr">76.8 M</span></span>
+                <span>DECEL: <span class="stats-micro-val" id="d2-decel">4.48 G</span></span>
+                <span>DWELL: <span class="stats-micro-val" id="d2-dwell">0.24</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full-Width Strategy & Telemetry Analyzer -->
+      <section class="analyzer-deck">
+        <div class="analyzer-header">
+          <div class="analyzer-tabs">
+            <button class="tab-btn active" data-tab="segments">SEGMENTS</button>
+            <button class="tab-btn" data-tab="tyre">TYRE DEG</button>
+            <button class="tab-btn" data-tab="energy">2026 ENERGY</button>
+            <button class="tab-btn" data-tab="replay" style="color:var(--accent); font-weight:700;">● RACE REPLAY</button>
+            <button class="tab-btn" data-tab="debrief">EXECUTIVE DEBRIEF</button>
+          </div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-disabled);" id="analyzer-meta">
+            SAMPLE: 52 TIMED LAPS · DUCKDB VERIFIED
+          </div>
+        </div>
+
+        <div class="table-container" id="analyzer-table-wrap">
+          <!-- Dynamically populated tables -->
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Deck (on Widescreen) or Mount for Bottom Sheet (on Surface 3:2) -->
+    <div id="transponder-mount">
+      <!-- 3. Pinned Bottom Radio Transponder Bar (44px) -->
+      <div class="transponder-bar" id="transponder-bar">
+        <div class="transponder-ticker" id="transponder-ticker">
+          <span class="ticker-badge">
+            <span class="ticker-pulse"></span>
+            <span>RADIO ACTIVE</span>
+          </span>
+          <span class="ticker-text" id="ticker-text-content">
+            Engineer: PIA carries +4 km/h apex roll into T3 with later brake threshold...
+          </span>
+          <button class="ticker-expand-btn" id="drawer-toggle-btn">[ ▲ EXPAND COMMS ]</button>
+        </div>
+
+        <div class="transponder-quick-input">
+          <input type="text" id="quick-input" class="quick-input" placeholder="Quick question to pit wall..." />
+          <button id="quick-btn" class="quick-btn">[ SEND ]</button>
+        </div>
+      </div>
+
+      <!-- Backdrop Overlay -->
+      <div class="comms-backdrop" id="comms-backdrop"></div>
+
+      <!-- 4. Slide-Up Comms Sheet / Drawer (65vh) -->
+      <aside class="comms-drawer" id="comms-drawer">
+        <div class="drawer-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="ticker-pulse"></span>
+            <span style="font-weight:700; color:var(--text-display);">F1 AI RACE ENGINEER // COMMS CHANNEL</span>
+            <span style="color:var(--text-disabled);" id="drawer-team-sub">[McLAREN F1 TEAM]</span>
+          </div>
+          <button class="ticker-expand-btn" id="drawer-close-btn">[ ▼ COLLAPSE ]</button>
+        </div>
+
+        <div class="drawer-stream" id="drawer-stream">
+          <!-- Chat Bubbles -->
+        </div>
+
+        <div class="drawer-footer">
+          <div class="quick-chips" id="quick-chips">
+            <!-- Dynamic constructor chips -->
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <input
+              type="text"
+              id="drawer-input"
+              class="quick-input"
+              style="flex:1; width:auto;"
+              placeholder="Ask about corner minimum speed, tyre degradation, or 2026 MGU-K straight derates..."
+            />
+            <button id="drawer-send-btn" class="quick-btn" style="padding:6px 16px;">[ TRANSMIT ]</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    // State Model
+    const state = {
+      theme: 'light',
+      session: '2026_01_R',
+      team: 'McLaren',
+      runType: 'long_run',
+      corner: 'T3',
+      tab: 'segments',
+      isDrawerOpen: false,
+      replayLap: 1,
+      isPlaying: false,
+      messages: [
+        {
+          role: 'assistant',
+          author: 'AI RACE ENGINEER',
+          time: '14:30:12',
+          content: 'Session telemetry synchronized. Comparing <button class="chip-anchor" data-corner="T3" data-tab="segments">T3</button> telemetry: PIA carries +4.0 km/h minimum apex speed roll over NOR with a later brake point into <button class="chip-anchor" data-segment="T3-T4" data-tab="segments">T3-T4</button>. Check straight-line <button class="chip-anchor" data-tab="energy">clipping</button> before T9.'
+        }
+      ]
+    };
+
+    const teamDrivers = {
+      McLaren: ['PIA', 'NOR'],
+      Ferrari: ['LEC', 'HAM'],
+      Mercedes: ['RUS', 'ANT'],
+      'Red Bull': ['VER', 'LAW'],
+      Williams: ['ALB', 'SAI'],
+      Audi: ['HUL', 'BOR'],
+      Cadillac: ['BOT', 'PER']
+    };
+
+    const teamChips = {
+      McLaren: [
+        'Compare T3 braking: Piastri vs Norris',
+        'Analyze McLaren sector deltas into T3-T4',
+        'McLaren Medium vs Hard tyre degradation slope',
+        'Check straight-line energy clipping'
+      ],
+      Ferrari: [
+        'Compare T3 apex speeds: Leclerc vs Hamilton',
+        'Analyze Hamilton vs Leclerc opening sector deltas',
+        'Summarize Ferrari setup hypotheses for T3',
+        'Ferrari tyre degradation on Medium compound'
+      ],
+      Mercedes: [
+        'Compare Russell and Antonelli into T3',
+        'What is Antonelli tyre degradation on Hards?',
+        'Mercedes straight-line speed derate signature',
+        'Analyze Mercedes teammate deltas in T3-T4'
+      ]
+    };
+
+    // Render Corner Stepper T1..T14
+    function renderCornerStepper() {
+      const stepper = document.getElementById('corner-stepper');
+      stepper.innerHTML = '';
+      for (let i = 1; i <= 14; i++) {
+        const c = 'T' + i;
+        const btn = document.createElement('button');
+        btn.className = 'corner-step-btn' + (c === state.corner ? ' active' : '');
+        btn.id = 'btn-corner-' + c;
+        btn.textContent = c;
+        btn.onclick = () => selectCorner(c);
+        stepper.appendChild(btn);
+      }
+    }
+
+    function selectCorner(c) {
+      state.corner = c;
+      renderCornerStepper();
+      updateDriverCassettes();
+      if (state.tab === 'segments') renderTable();
+    }
+
+    // Update Driver Cassettes
+    function updateDriverCassettes() {
+      const drivers = teamDrivers[state.team] || ['DRV1', 'DRV2'];
+      document.getElementById('d1-code').textContent = drivers[0];
+      document.getElementById('d2-code').textContent = drivers[1];
+      
+      const num = parseInt(state.corner.replace('T', ''), 10) || 1;
+      const baseSpeed = 150 + (num * 4) % 90;
+      document.getElementById('d1-apex').textContent = baseSpeed + 4;
+      document.getElementById('d2-apex').textContent = baseSpeed;
+
+      const d1Brake = (75 + (num * 3) % 40).toFixed(1);
+      const d2Brake = (85 + (num * 3) % 40).toFixed(1);
+      document.getElementById('d1-brake').textContent = d1Brake + ' M BEFORE';
+      document.getElementById('d2-brake').textContent = d2Brake + ' M BEFORE';
+
+      document.getElementById('drawer-team-sub').textContent = `[${state.team.toUpperCase()} · ${drivers.join(' / ')}]`;
+    }
+
+    // Render Active Tab Content
+    function renderTable() {
+      const wrap = document.getElementById('analyzer-table-wrap');
+      const drivers = teamDrivers[state.team] || ['DRV1', 'DRV2'];
+
+      if (state.tab === 'segments') {
+        wrap.innerHTML = `
+          <table class="f1-table">
+            <thead>
+              <tr>
+                <th>TRACK SEGMENT</th>
+                <th class="num">DELTA (${drivers[0]} - ${drivers[1]})</th>
+                <th class="num">90% BOOTSTRAP CI</th>
+                <th class="num">TELEMETRY STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="row-segment-start-T1">
+                <td style="font-weight:700;">start-T1</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.142 S</td>
+                <td class="num" style="color:var(--text-secondary); white-space:nowrap;">[+0.082s, +0.202s]</td>
+                <td class="num"><span class="driver-style-badge" style="background:var(--text-display); color:var(--bg);">[ SIGNIFICANT ]</span></td>
+              </tr>
+              <tr id="row-segment-T1-T2">
+                <td style="font-weight:700;">T1-T2</td>
+                <td class="num" style="color:var(--success); font-weight:700;">-0.051 S</td>
+                <td class="num" style="color:var(--text-secondary); white-space:nowrap;">[-0.092s, -0.010s]</td>
+                <td class="num"><span class="driver-style-badge" style="background:var(--text-display); color:var(--bg);">[ SIGNIFICANT ]</span></td>
+              </tr>
+              <tr id="row-segment-T3-T4">
+                <td style="font-weight:700;">T3-T4</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.084 S</td>
+                <td class="num" style="color:var(--text-secondary); white-space:nowrap;">[+0.031s, +0.137s]</td>
+                <td class="num"><span class="driver-style-badge" style="background:var(--text-display); color:var(--bg);">[ SIGNIFICANT ]</span></td>
+              </tr>
+              <tr id="row-segment-T6-T7">
+                <td style="font-weight:700;">T6-T7</td>
+                <td class="num" style="color:var(--text-primary); font-weight:700;">-0.021 S</td>
+                <td class="num" style="color:var(--text-secondary); white-space:nowrap;">[-0.065s, +0.023s]</td>
+                <td class="num"><span class="driver-style-badge">[ SPREAD / NOISE ]</span></td>
+              </tr>
+              <tr id="row-segment-T9-T10">
+                <td style="font-weight:700;">T9-T10</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.110 S</td>
+                <td class="num" style="color:var(--text-secondary); white-space:nowrap;">[+0.055s, +0.165s]</td>
+                <td class="num"><span class="driver-style-badge" style="background:var(--text-display); color:var(--bg);">[ SIGNIFICANT ]</span></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else if (state.tab === 'tyre') {
+        wrap.innerHTML = `
+          <table class="f1-table">
+            <thead>
+              <tr>
+                <th>DRIVER</th>
+                <th>COMPOUND</th>
+                <th class="num">BASE PACE</th>
+                <th class="num">DEG RATE (S/LAP)</th>
+                <th class="num">90% CI</th>
+                <th class="num">STINT LAPS</th>
+                <th class="num">FUEL CORRECTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:700;">${drivers[0]}</td>
+                <td><span class="driver-style-badge">MEDIUM</span></td>
+                <td class="num" style="font-weight:700;">1:20.412s</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.078</td>
+                <td class="num" style="color:var(--text-secondary);">[+0.065, +0.091]</td>
+                <td class="num">24</td>
+                <td class="num" style="color:var(--text-disabled); font-size:10px;">-1.62 kg/L (Δ0.048s)</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;">${drivers[1]}</td>
+                <td><span class="driver-style-badge">MEDIUM</span></td>
+                <td class="num" style="font-weight:700;">1:20.584s</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.089</td>
+                <td class="num" style="color:var(--text-secondary);">[+0.072, +0.106]</td>
+                <td class="num">22</td>
+                <td class="num" style="color:var(--text-disabled); font-size:10px;">-1.60 kg/L (Δ0.048s)</td>
+              </tr>
+              <tr>
+                <td style="font-weight:700;">${drivers[0]}</td>
+                <td><span class="driver-style-badge">HARD</span></td>
+                <td class="num" style="font-weight:700;">1:21.140s</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">+0.042</td>
+                <td class="num" style="color:var(--text-secondary);">[+0.034, +0.050]</td>
+                <td class="num">34</td>
+                <td class="num" style="color:var(--text-disabled); font-size:10px;">-1.58 kg/L (Δ0.048s)</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else if (state.tab === 'energy') {
+        wrap.innerHTML = `
+          <table class="f1-table">
+            <thead>
+              <tr>
+                <th>DRIVER</th>
+                <th>STRAIGHT</th>
+                <th class="num">V_PEAK (KM/H)</th>
+                <th class="num">V_END (KM/H)</th>
+                <th class="num">LATE SPEED LOSS</th>
+                <th class="num">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="row-energy-Main-Straight">
+                <td style="font-weight:700;">${drivers[0]}</td>
+                <td style="font-weight:700;">Main Straight</td>
+                <td class="num" style="font-weight:700;">328</td>
+                <td class="num" style="color:var(--text-secondary);">321</td>
+                <td class="num" style="color:var(--accent); font-weight:700;">-7.2 KM/H</td>
+                <td class="num"><span class="driver-style-badge" style="background:var(--accent); color:#FFF; font-weight:700;">[ CLIPPING ALERT ]</span></td>
+              </tr>
+              <tr id="row-energy-Back-Straight">
+                <td style="font-weight:700;">${drivers[1]}</td>
+                <td style="font-weight:700;">Back Straight</td>
+                <td class="num" style="font-weight:700;">318</td>
+                <td class="num" style="color:var(--text-secondary);">315</td>
+                <td class="num" style="color:var(--text-disabled); font-weight:700;">-3.1 KM/H</td>
+                <td class="num"><span class="driver-style-badge">[ NOMINAL ]</span></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      } else if (state.tab === 'replay') {
+        wrap.innerHTML = `
+          <div style="padding:10px; display:flex; flex-direction:column; gap:8px;">
+            <div style="background:var(--surface-raised); border:1px solid var(--border-visible); border-radius:4px; padding:6px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button id="demo-play-btn" class="quick-btn" style="padding:4px 12px;">
+                  ${state.isPlaying ? '[ ❚❚ PAUSE ]' : '[ ▶ PLAY ]'}
+                </button>
+                <span style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text-display);">
+                  LAP: <span id="demo-lap-val">${state.replayLap}</span> / 58
+                </span>
+              </div>
+              <input type="range" id="demo-scrubber" min="1" max="58" value="${state.replayLap}" style="flex:1; accent-color:var(--accent); cursor:pointer;" />
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-secondary);">1X REALTIME</span>
+            </div>
+
+            <table class="f1-table">
+              <thead>
+                <tr><th>POS</th><th>DRIVER</th><th>TEAM</th><th class="num">GAP</th><th class="num">LAST LAP</th><th class="num">TYRE</th><th class="num">PITS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td style="font-weight:700;">P1</td><td style="font-weight:700;">${drivers[0]}</td><td style="color:var(--text-secondary);">${state.team}</td><td class="num" style="color:var(--success); font-weight:700;">LEADER</td><td class="num">1:20.412</td><td class="num"><span class="driver-style-badge">M</span> (${state.replayLap % 19}L)</td><td class="num">${Math.floor(state.replayLap / 19)}</td></tr>
+                <tr><td style="font-weight:700;">P2</td><td style="font-weight:700;">${drivers[1]}</td><td style="color:var(--text-secondary);">${state.team}</td><td class="num" style="font-weight:700;">+${(1.4 + state.replayLap * 0.04).toFixed(3)}s</td><td class="num">1:20.584</td><td class="num"><span class="driver-style-badge">M</span> (${state.replayLap % 19}L)</td><td class="num">${Math.floor(state.replayLap / 19)}</td></tr>
+                <tr><td style="font-weight:700;">P3</td><td style="font-weight:700;">LEC</td><td style="color:var(--text-secondary);">Ferrari</td><td class="num" style="font-weight:700;">+${(3.8 + state.replayLap * 0.08).toFixed(3)}s</td><td class="num">1:20.890</td><td class="num"><span class="driver-style-badge">H</span> (${state.replayLap % 24}L)</td><td class="num">${Math.floor(state.replayLap / 24)}</td></tr>
+                <tr><td style="font-weight:700;">P4</td><td style="font-weight:700;">VER</td><td style="color:var(--text-secondary);">Red Bull</td><td class="num" style="font-weight:700;">+${(14.2 + state.replayLap * 0.22).toFixed(3)}s</td><td class="num">1:21.512</td><td class="num"><span class="driver-style-badge">M</span> (${state.replayLap % 18}L)</td><td class="num">${Math.floor(state.replayLap / 18)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        document.getElementById('demo-scrubber').oninput = (e) => {
+          state.replayLap = parseInt(e.target.value, 10);
+          document.getElementById('demo-lap-val').textContent = state.replayLap;
+        };
+
+        document.getElementById('demo-play-btn').onclick = () => {
+          state.isPlaying = !state.isPlaying;
+          renderTable();
+        };
+      } else if (state.tab === 'debrief') {
+        wrap.innerHTML = `
+          <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+            <div style="background:var(--surface-raised); border-left:3px solid var(--text-display); padding:10px 14px; border-radius:4px;">
+              <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); text-transform:uppercase;">
+                CONSTRUCTOR PACING ASSESSMENT (${state.team})
+              </div>
+              <div style="font-size:12px; color:var(--text-primary); margin-top:4px; line-height:1.45;">
+                Teammate delta analysis reveals significant divergence in low-speed rotation into T3. ${drivers[0]} executes a geometric V-style line carrying +4 km/h minimum apex roll, whereas ${drivers[1]} demonstrates earlier threshold braking and slightly wider exit trajectory.
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div style="background:var(--surface-raised); border:1px solid var(--border); border-radius:6px; padding:10px 12px;">
+                <div style="font-family:var(--font-display); font-size:16px; font-weight:800;">${drivers[0]}</div>
+                <div style="font-family:var(--font-mono); font-size:10px; color:var(--success); margin-top:4px;">GAIN: +0.051s in T1-T2 direction change</div>
+                <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">SETUP: Stiffer front anti-roll bar allows aggressive kerb strike without destabilizing rear platform.</div>
+              </div>
+
+              <div style="background:var(--surface-raised); border:1px solid var(--border); border-radius:6px; padding:10px 12px;">
+                <div style="font-family:var(--font-display); font-size:16px; font-weight:800;">${drivers[1]}</div>
+                <div style="font-family:var(--font-mono); font-size:10px; color:var(--accent); margin-top:4px;">LOSS: -0.084s in T3-T4 transition</div>
+                <div style="font-size:11px; color:var(--text-secondary); margin-top:6px;">SETUP: Compliant damping produces excessive dwell ratio during rotation.</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      bindAnchors();
+    }
+
+    // Bind Tab Click Handlers
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.tab = btn.getAttribute('data-tab');
+        renderTable();
+      };
+    });
+
+    // Deep-Linking Handler
+    function bindAnchors() {
+      document.querySelectorAll('.chip-anchor').forEach(anchor => {
+        anchor.onclick = (e) => {
+          e.stopPropagation();
+          const corner = anchor.getAttribute('data-corner');
+          const segment = anchor.getAttribute('data-segment');
+          const tab = anchor.getAttribute('data-tab');
+
+          if (tab) {
+            state.tab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => {
+              b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+            });
+            renderTable();
+          }
+
+          if (corner) selectCorner(corner);
+
+          setTimeout(() => {
+            let el = null;
+            if (segment) el = document.getElementById('row-segment-' + segment);
+            else if (corner) el = document.getElementById('btn-corner-' + corner);
+
+            if (el) {
+              el.classList.add('flash-highlight');
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              setTimeout(() => el.classList.remove('flash-highlight'), 2500);
+            }
+          }, 80);
+        };
+      });
+    }
+
+    // Render Chat Stream & Chips
+    function renderComms() {
+      const stream = document.getElementById('drawer-stream');
+      stream.innerHTML = state.messages.map(m => `
+        <div class="chat-bubble ${m.role}">
+          <div class="bubble-meta">
+            <span>${m.author}</span>
+            <span>${m.time}</span>
+          </div>
+          <div>${m.content}</div>
+        </div>
+      `).join('');
+
+      const chipsWrap = document.getElementById('quick-chips');
+      const chips = teamChips[state.team] || teamChips['McLaren'];
+      chipsWrap.innerHTML = chips.map(c => `
+        <button class="chip-btn">${c}</button>
+      `).join('');
+
+      chipsWrap.querySelectorAll('.chip-btn').forEach(btn => {
+        btn.onclick = () => sendMsg(btn.textContent);
+      });
+
+      bindAnchors();
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function sendMsg(text) {
+      if (!text) return;
+      const now = new Date().toTimeString().slice(0, 8);
+      state.messages.push({
+        role: 'user',
+        author: 'RACE STRATEGIST',
+        time: now,
+        content: text
+      });
+
+      renderComms();
+
+      // Simulated Intelligent Response
+      setTimeout(() => {
+        const drivers = teamDrivers[state.team] || ['DRV1', 'DRV2'];
+        state.messages.push({
+          role: 'assistant',
+          author: 'AI RACE ENGINEER',
+          time: new Date().toTimeString().slice(0, 8),
+          content: `Telemetry analysis for <button class="chip-anchor" data-corner="${state.corner}" data-tab="segments">${state.corner}</button>: ${drivers[0]} is +0.065s faster on throttle pickup compared to ${drivers[1]}. Review <button class="chip-anchor" data-segment="start-T1" data-tab="segments">start-T1</button> and straight-line <button class="chip-anchor" data-tab="energy">clipping</button> before next pit cycle.`
+        });
+        document.getElementById('ticker-text-content').textContent = `Engineer: ${drivers[0]} carries advantage into ${state.corner}...`;
+        renderComms();
+      }, 700);
+    }
+
+    // Drawer Toggles
+    function toggleDrawer(open) {
+      state.isDrawerOpen = open;
+      document.getElementById('comms-drawer').classList.toggle('open', open);
+      document.getElementById('comms-backdrop').classList.toggle('open', open);
+      document.getElementById('drawer-toggle-btn').textContent = open ? '[ ▼ COLLAPSE ]' : '[ ▲ EXPAND COMMS ]';
+    }
+
+    document.getElementById('transponder-ticker').onclick = (e) => {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+        toggleDrawer(!state.isDrawerOpen);
+      }
+    };
+    document.getElementById('drawer-toggle-btn').onclick = (e) => {
+      e.stopPropagation();
+      toggleDrawer(!state.isDrawerOpen);
+    };
+    document.getElementById('drawer-close-btn').onclick = () => toggleDrawer(false);
+    document.getElementById('comms-backdrop').onclick = () => toggleDrawer(false);
+
+    // Inputs
+    document.getElementById('quick-btn').onclick = () => {
+      const input = document.getElementById('quick-input');
+      sendMsg(input.value.trim());
+      input.value = '';
+    };
+    document.getElementById('quick-input').onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        sendMsg(e.target.value.trim());
+        e.target.value = '';
+      }
+    };
+
+    document.getElementById('drawer-send-btn').onclick = () => {
+      const input = document.getElementById('drawer-input');
+      sendMsg(input.value.trim());
+      input.value = '';
+    };
+    document.getElementById('drawer-input').onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        sendMsg(e.target.value.trim());
+        e.target.value = '';
+      }
+    };
+
+    // Global Hotkeys
+    window.onkeydown = (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        toggleDrawer(!state.isDrawerOpen);
+      }
+      if (e.key === 'Escape' && state.isDrawerOpen) {
+        toggleDrawer(false);
+      }
+      if (e.key === 'ArrowLeft') {
+        const num = parseInt(state.corner.replace('T', ''), 10);
+        if (num > 1) selectCorner('T' + (num - 1));
+      }
+      if (e.key === 'ArrowRight') {
+        const num = parseInt(state.corner.replace('T', ''), 10);
+        if (num < 14) selectCorner('T' + (num + 1));
+      }
+    };
+
+    // Header Controls
+    document.getElementById('team-select').onchange = (e) => {
+      state.team = e.target.value;
+      updateDriverCassettes();
+      renderComms();
+      renderTable();
+    };
+
+    // Automatically follow system default theme (dark / light)
+    const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    function applySystemTheme(isDark) {
+      state.theme = isDark ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', state.theme);
+    }
+    applySystemTheme(systemDarkQuery.matches);
+    systemDarkQuery.addEventListener('change', (e) => applySystemTheme(e.matches));
+
+    // Live UTC Clock
+    setInterval(() => {
+      document.getElementById('clock-display').textContent = new Date().toTimeString().slice(0, 8);
+    }, 1000);
+
+    // Boot
+    renderCornerStepper();
+    updateDriverCassettes();
+    renderTable();
+    renderComms();
+  </script>
+</body>
+</html>

@@ -4,7 +4,6 @@ export interface HeaderCallbacks {
   onSessionChange: (sessionId: string) => void;
   onTeamChange: (team: string) => void;
   onRunTypeChange: (runType: "push" | "long_run") => void;
-  onThemeToggle: () => void;
 }
 
 let clockInterval: number | null = null;
@@ -16,7 +15,6 @@ export function renderHeader(
   teams: TeamDriverInfo[],
   currentTeam: string,
   currentRunType: "push" | "long_run",
-  currentTheme: "light" | "dark",
   callbacks: HeaderCallbacks
 ): void {
   const utcNow = new Date().toUTCString().slice(17, 25);
@@ -74,11 +72,6 @@ export function renderHeader(
             <option value="long_run" ${currentRunType === "long_run" ? "selected" : ""}>LONG RUN (RACE SIM)</option>
           </select>
         </div>
-
-        <button id="theme-toggle-btn" class="btn-toggle-theme" title="Toggle Light/Dark Theme">
-          <span>${currentTheme === "light" ? "☾" : "☀"}</span>
-          <span>[ ${currentTheme === "light" ? "DARK" : "LIGHT"} ]</span>
-        </button>
       </div>
     </header>
   `;
@@ -106,10 +99,5 @@ export function renderHeader(
   const runTypeSelect = container.querySelector("#run-type-select") as HTMLSelectElement;
   runTypeSelect?.addEventListener("change", (e) => {
     callbacks.onRunTypeChange((e.target as HTMLSelectElement).value as "push" | "long_run");
-  });
-
-  const themeBtn = container.querySelector("#theme-toggle-btn") as HTMLButtonElement;
-  themeBtn?.addEventListener("click", () => {
-    callbacks.onThemeToggle();
   });
 }

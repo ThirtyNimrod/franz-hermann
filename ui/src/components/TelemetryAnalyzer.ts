@@ -1,6 +1,6 @@
-import type { EnergySignature, SegmentDelta, TyreStint } from "../types";
+import type { EnergySignature, SegmentDelta, SessionHighlight, TyreStint } from "../types";
 
-export type TelemetryTab = "segments" | "tyre" | "energy" | "replay";
+export type TelemetryTab = "segments" | "tyre" | "energy" | "replay" | "debrief";
 
 export interface ReplayState {
   currentLap: number;
@@ -26,6 +26,7 @@ export function renderTelemetryAnalyzer(
   selectedCompound: string,
   energySignatures: EnergySignature[],
   replayState: ReplayState,
+  highlights: SessionHighlight[],
   callbacks: TelemetryAnalyzerCallbacks
 ): void {
   const driverA = segmentDeltas[0]?.driver_a || "DRIVER A";
@@ -52,6 +53,9 @@ export function renderTelemetryAnalyzer(
           <button class="nav-tab-btn ${activeTab === "replay" ? "active" : ""}" data-tab="replay" style="color: ${activeTab === "replay" ? "var(--black)" : "var(--accent)"}; font-weight: 700;">
             ● RACE REPLAY
           </button>
+          <button class="nav-tab-btn ${activeTab === "debrief" ? "active" : ""}" data-tab="debrief">
+            EXECUTIVE DEBRIEF
+          </button>
         </div>
       </div>
 
@@ -66,7 +70,8 @@ export function renderTelemetryAnalyzer(
           tyreStints,
           selectedCompound,
           energySignatures,
-          replayState
+          replayState,
+          highlights
         )}
       </div>
     </div>
@@ -115,7 +120,8 @@ function renderTabContent(
   tyres: TyreStint[],
   selectedCompound: string,
   energy: EnergySignature[],
-  replay: ReplayState
+  replay: ReplayState,
+  highlights: SessionHighlight[]
 ): string {
   if (tab === "segments") {
     return `
@@ -139,7 +145,7 @@ function renderTabContent(
             <tr>
               <th>SEGMENT</th>
               <th class="num">DELTA (${driverA} - ${driverB})</th>
-              <th class="num">90% CONFIDENCE INTERVAL</th>
+              <th class="num">90% BOOTSTRAP CI</th>
               <th class="num">STATUS</th>
             </tr>
           </thead>
@@ -153,17 +159,23 @@ function renderTabContent(
                 }${d.ci_high_s.toFixed(3)}s]`;
 
                 return `
-                <tr class="${isSig ? "active-row" : ""}">
+                <tr id="row-segment-${d.segment}" class="${isSig ? "active-row" : ""}">
                   <td style="font-weight: 700; color: var(--text-display);">${d.segment}</td>
                   <td class="num" style="font-weight: 700; color: ${
                     isSig ? (d.delta_s > 0 ? "var(--accent)" : "var(--success)") : "var(--text-primary)"
                   };">
                     ${deltaStr}
                   </td>
-                  <td class="num" style="color: var(--text-secondary);">${ciStr}</td>
+                  <td class="num" style="color: var(--text-secondary); font-family: var(--font-mono); white-space: nowrap;">
+                    ${ciStr}
+                  </td>
                   <td class="num">
-                    <span class="delta-badge ${isSig ? "significant" : "neutral"}">
-                      ${isSig ? "[SIGNIFICANT]" : "[SPREAD/NOISE]"}
+                    <span class="corner-style-badge" style="font-size: 9px; padding: 1px 6px; ${
+                      isSig
+                        ? "background: var(--text-display); color: var(--black); font-weight: 700;"
+                        : "color: var(--text-disabled);"
+                    }">
+                      ${isSig ? "[ SIGNIFICANT ]" : "[ SPREAD / NOISE ]"}
                     </span>
                   </td>
                 </tr>
@@ -178,20 +190,22 @@ function renderTabContent(
   }
 
   if (tab === "tyre") {
-    const compounds = ["ALL", "SOFT", "MEDIUM", "HARD"];
+    const compounds = Array.from(new Set(tyres.map((t) => t.compound)));
+
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px;">
         <span style="color: var(--text-secondary); text-transform: uppercase;">
-          THEIL-SEN FUEL-CORRECTED DEGRADATION
+          COMPOUND FILTER:
         </span>
-        <div style="display: flex; gap: 3px;">
+        <div style="display: flex; gap: 4px;">
+          <button class="corner-btn ${selectedCompound === "ALL" ? "active" : ""}" data-compound="ALL" style="font-size: 9px; padding: 2px 6px;">ALL</button>
           ${compounds
             .map(
               (c) => `
-              <button class="corner-btn ${c === selectedCompound ? "active" : ""}" data-compound="${c}" style="font-size: 10px; padding: 2px 6px;">
-                ${c}
-              </button>
-            `
+            <button class="corner-btn ${selectedCompound === c ? "active" : ""}" data-compound="${c}" style="font-size: 9px; padding: 2px 6px;">
+              ${c}
+            </button>
+          `
             )
             .join("")}
         </div>
@@ -200,7 +214,7 @@ function renderTabContent(
       ${
         tyres.length === 0
           ? `<div style="padding: 32px; text-align: center; font-family: var(--font-mono); color: var(--text-disabled);">
-              [ NO LONG RUN TYRE STINTS RECORDED ]
+              [ NO TYRE DEGRADATION RUNS FOR THIS FILTER ]
             </div>`
           : `
         <table class="data-table">
@@ -208,28 +222,83 @@ function renderTabContent(
             <tr>
               <th>DRIVER</th>
               <th>COMPOUND</th>
-              <th class="num">DEG SLOPE (S/LAP)</th>
               <th class="num">BASE PACE</th>
+              <th class="num">DEG RATE (S/LAP)</th>
+              <th class="num">90% CI</th>
               <th class="num">LAPS</th>
+              <th class="num">FUEL CORRECTION</th>
             </tr>
           </thead>
           <tbody>
             ${tyres
-              .map((t) => {
-                const degStr = (t.deg_s_per_lap >= 0 ? "+" : "") + t.deg_s_per_lap.toFixed(3) + " s/lap";
+              .map(
+                (t) => `
+              <tr id="row-tyre-${t.driver}-${t.compound}">
+                <td style="font-weight: 700; color: var(--text-display);">${t.driver}</td>
+                <td>
+                  <span class="corner-style-badge" style="font-size: 9px; padding: 1px 4px;">${t.compound}</span>
+                </td>
+                <td class="num" style="color: var(--text-primary); font-weight: 700;">${t.base_pace_s?.toFixed(3)}s</td>
+                <td class="num" style="color: var(--accent); font-weight: 700;">+${t.deg_s_per_lap?.toFixed(3)}</td>
+                <td class="num" style="color: var(--text-secondary); white-space: nowrap;">
+                  [+${t.deg_ci_low?.toFixed(3)}, +${t.deg_ci_high?.toFixed(3)}]
+                </td>
+                <td class="num">${t.n_laps_used}</td>
+                <td class="num" style="color: var(--text-disabled); font-size: 10px;">
+                  -${t.fuel_kg_per_lap?.toFixed(2)} kg/L (Δ${t.fuel_s_per_kg?.toFixed(3)}s)
+                </td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `
+      }
+    `;
+  }
+
+  if (tab === "energy") {
+    return `
+      ${
+        energy.length === 0
+          ? `<div style="padding: 32px; text-align: center; font-family: var(--font-mono); color: var(--text-disabled);">
+              [ NO 2026 ENERGY SIGNATURES RECORDED ]
+            </div>`
+          : `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>DRIVER</th>
+              <th>STRAIGHT</th>
+              <th class="num">V_PEAK (KM/H)</th>
+              <th class="num">V_END (KM/H)</th>
+              <th class="num">LATE SPEED LOSS</th>
+              <th class="num">STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${energy
+              .map((e) => {
+                const isClip = e.clipping_flag;
                 return `
-                <tr>
-                  <td style="font-weight: 700; color: var(--text-display);">${t.driver}</td>
-                  <td>
-                    <span class="corner-style-badge">${t.compound}</span>
+                <tr id="row-energy-${e.straight}" class="${isClip ? "active-row" : ""}">
+                  <td style="font-weight: 700; color: var(--text-display);">${e.driver}</td>
+                  <td style="font-weight: 700;">${e.straight}</td>
+                  <td class="num" style="font-weight: 700; color: var(--text-display);">${Math.round(e.v_peak_kmh)}</td>
+                  <td class="num" style="color: var(--text-secondary);">${Math.round(e.v_end_kmh)}</td>
+                  <td class="num" style="font-weight: 700; color: ${isClip ? "var(--accent)" : "var(--text-disabled)"};">
+                    -${e.late_loss_kmh?.toFixed(1)} KM/H
                   </td>
-                  <td class="num" style="font-weight: 700; color: ${
-                    t.deg_s_per_lap > 0.08 ? "var(--warning)" : "var(--text-display)"
-                  };">
-                    ${degStr}
+                  <td class="num">
+                    <span class="corner-style-badge" style="font-size: 9px; padding: 1px 6px; ${
+                      isClip
+                        ? "background: var(--accent); color: #FFF; border-color: var(--accent); font-weight: 700;"
+                        : "color: var(--text-disabled);"
+                    }">
+                      ${isClip ? "[ CLIPPING ALERT ]" : "[ NOMINAL ]"}
+                    </span>
                   </td>
-                  <td class="num" style="color: var(--text-secondary);">${t.base_pace_s?.toFixed(2)}s</td>
-                  <td class="num" style="color: var(--text-disabled);">${t.n_laps_used}</td>
                 </tr>
               `;
               })
@@ -241,59 +310,81 @@ function renderTabContent(
     `;
   }
 
-  if (tab === "energy") {
+  if (tab === "debrief") {
+    const teamHighlights = highlights[0];
     return `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px;">
-        <span style="color: var(--text-secondary); text-transform: uppercase;">
-          2026 ELECTRICAL ENERGY DERATE & SPEED SHAPE
-        </span>
-        <span class="brand-badge" style="font-size: 9px; padding: 1px 4px;">
-          REG: 2026 POWER UNIT
-        </span>
-      </div>
+      <div style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-display);">
+            EXECUTIVE PIT WALL SYNTHESIS (${teamHighlights?.team || "CURRENT CONSTRUCTOR"})
+          </span>
+          <span style="font-family: var(--font-mono); font-size: 10px; color: ${
+            teamHighlights?.grounded ? "var(--success)" : "var(--warning)"
+          }; font-weight: 700;">
+            ${teamHighlights?.grounded ? "[ VERIFIED FACT: DUCKDB ]" : "[ DETERMINISTIC ESTIMATE ]"}
+          </span>
+        </div>
 
-      ${
-        energy.length === 0
-          ? `<div style="padding: 32px; text-align: center; font-family: var(--font-mono); color: var(--text-disabled);">
-              [ NO HIGH SPEED STRAIGHT SIGNATURES FOR TEAM ]
-            </div>`
-          : `
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>STRAIGHT</th>
-              <th>DRIVER</th>
-              <th class="num">V_PEAK</th>
-              <th class="num">LATE LOSS</th>
-              <th class="num">BATTERY CLIPPING</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${energy
-              .map((e) => {
-                const isClipping = e.clipping_flag;
-                return `
-                <tr class="${isClipping ? "active-row" : ""}">
-                  <td style="font-weight: 700; color: var(--text-display);">${e.straight}</td>
-                  <td>${e.driver}</td>
-                  <td class="num" style="font-weight: 700;">${Math.round(e.v_peak_kmh)} KM/H</td>
-                  <td class="num" style="color: ${isClipping ? "var(--accent)" : "var(--text-secondary)"};">
-                    -${Math.round(e.late_loss_kmh)} KM/H
-                  </td>
-                  <td class="num">
-                    <span class="clipping-signal ${isClipping ? "active" : ""}">
-                      <span class="signal-dot"></span>
-                      <span>${isClipping ? "[CLIPPING ALERT]" : "[NORMAL DEPLOY]"}</span>
-                    </span>
-                  </td>
-                </tr>
-              `;
-              })
+        ${
+          !teamHighlights
+            ? `
+          <div style="padding: 24px; text-align: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-disabled);">
+            [ NO DEBRIEF SYNTHESIS AVAILABLE FOR THIS CONSTRUCTOR ]
+          </div>
+        `
+            : `
+          <!-- Strategic Summary -->
+          <div style="background: var(--surface-raised); border-left: 3px solid var(--text-display); padding: 10px 14px; border-radius: 4px;">
+            <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); text-transform: uppercase;">
+              CONSTRUCTOR PACING ASSESSMENT
+            </div>
+            <div style="font-size: 12px; color: var(--text-primary); margin-top: 4px; line-height: 1.45;">
+              ${teamHighlights.team_summary}
+            </div>
+          </div>
+
+          <!-- Driver Hypotheses Cards -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            ${highlights
+              .map(
+                (h) => `
+              <div style="background-color: var(--surface-raised); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
+                  <span style="font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--text-display);">${h.driver}</span>
+                  <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">
+                    ${h.headline}
+                  </span>
+                </div>
+                
+                <div style="margin-top: 6px; font-family: var(--font-mono); font-size: 10px; display: flex; flex-direction: column; gap: 3px;">
+                  <div>
+                    <span style="color: var(--text-secondary);">PRIMARY GAIN:</span>
+                    <span style="color: var(--success); font-weight: 700;">${h.primary_time_gain || "None recorded"}</span>
+                  </div>
+                  <div>
+                    <span style="color: var(--text-secondary);">PRIMARY LOSS:</span>
+                    <span style="color: var(--accent); font-weight: 700;">${h.primary_time_loss || "None recorded"}</span>
+                  </div>
+                </div>
+
+                ${
+                  h.setup_hypotheses
+                    ? `
+                  <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                    <span style="font-weight: 700; color: var(--text-display); font-family: var(--font-mono); font-size: 10px;">SETUP HYPOTHESIS:</span>
+                    ${h.setup_hypotheses}
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            `
+              )
               .join("")}
-          </tbody>
-        </table>
-      `
-      }
+          </div>
+        `
+        }
+      </div>
     `;
   }
 
@@ -357,7 +448,7 @@ function renderTabContent(
           ${driversReplay
             .map(
               (r) => `
-            <tr>
+            <tr id="row-replay-${r.drv}">
               <td style="font-weight: 700; color: var(--text-display);">P${r.pos}</td>
               <td style="font-weight: 700;">${r.drv}</td>
               <td style="color: var(--text-secondary);">${r.team}</td>

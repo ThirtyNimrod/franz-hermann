@@ -49,11 +49,15 @@
   --caption: 12px;
   --label: 11px;
 
-  /* Layout */
-  --header-height: 56px;
-  --radius-card: 12px;
+  /* Layout & Option C Tokens */
+  --header-height: 38px;
+  --transponder-height: 44px;
+  --radius-card: 8px;
+  --radius-cassette: 6px;
   --radius-technical: 4px;
   --radius-pill: 999px;
+  --surface-overlay: rgba(255, 255, 255, 0.94);
+  --trans-speed: 140ms cubic-bezier(0.2, 0.0, 0.2, 1);
   --transition-fast: 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
   --transition-normal: 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
@@ -63,6 +67,7 @@
   --black: #000000;
   --surface: #111111;
   --surface-raised: #1A1A1A;
+  --surface-overlay: rgba(14, 14, 14, 0.96);
   --border: #222222;
   --border-visible: #333333;
 
@@ -75,3 +80,4 @@
 
   --accent-subtle: rgba(215, 25, 33, 0.18);
 }
+

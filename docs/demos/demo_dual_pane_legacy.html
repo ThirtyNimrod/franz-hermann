@@ -386,6 +386,11 @@
           <option value="push">PUSH (QUALIFYING)</option>
         </select>
       </div>
+
+      <button id="theme-toggle-btn" class="btn-toggle-theme">
+        <span id="theme-icon">☾</span>
+        <span id="theme-label">[ DARK ]</span>
+      </button>
     </div>
   </header>
 
@@ -554,14 +559,13 @@
       document.getElementById("utc-clock").textContent = new Date().toUTCString().slice(17, 25);
     }, 1000);
 
-    // Automatically follow system default color scheme (dark / light)
-    const systemDarkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    function applySystemTheme(isDark) {
-      state.theme = isDark ? "dark" : "light";
+    // Theme Toggle
+    document.getElementById("theme-toggle-btn").addEventListener("click", () => {
+      state.theme = state.theme === "light" ? "dark" : "light";
       document.documentElement.setAttribute("data-theme", state.theme);
-    }
-    applySystemTheme(systemDarkQuery.matches);
-    systemDarkQuery.addEventListener("change", (e) => applySystemTheme(e.matches));
+      document.getElementById("theme-icon").textContent = state.theme === "light" ? "☾" : "☀";
+      document.getElementById("theme-label").textContent = state.theme === "light" ? "[ DARK ]" : "[ LIGHT ]";
+    });
 
     // Selectors
     document.getElementById("team-select").addEventListener("change", (e) => {

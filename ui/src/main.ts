@@ -13,9 +13,10 @@ import {
   sendChatMessage,
 } from "./api";
 import { renderCornerDeck } from "./components/CornerDeck";
-import { renderDebriefCard } from "./components/DebriefCard";
-import { renderEngineerIntercom } from "./components/EngineerIntercom";
 import { renderHeader } from "./components/Header";
+import {
+  renderRadioTransponder,
+} from "./components/RadioTransponder";
 import {
   renderTelemetryAnalyzer,
   type ReplayState,
@@ -49,6 +50,7 @@ class AppState {
   highlights: SessionHighlight[] = [];
   messages: ChatMessage[] = [];
   isTransmitting: boolean = false;
+  isDrawerOpen: boolean = false;
   currentTheme: "light" | "dark" = "light";
   selectedTelemetryTab: TelemetryTab = "segments";
   replayState: ReplayState = {
@@ -62,15 +64,24 @@ class AppState {
 const state = new AppState();
 let replayInterval: number | null = null;
 
-// Initialize App
+// Initialize Option C Pit Wall Console
 async function init() {
   const appEl = document.querySelector("#app");
   if (!appEl) return;
 
-  // Set initial theme
-  document.documentElement.setAttribute("data-theme", state.currentTheme);
+  // Automatically follow system default color scheme (dark / light)
+  const systemDarkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const applySystemTheme = (isDark: boolean) => {
+    state.currentTheme = isDark ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", state.currentTheme);
+  };
+  applySystemTheme(systemDarkQuery.matches);
+  systemDarkQuery.addEventListener("change", (e) => {
+    applySystemTheme(e.matches);
+    renderAll();
+  });
 
-  // Setup DOM scaffold for 100vh dual-deck
+  // Setup DOM scaffold for Option C layout
   appEl.innerHTML = `
     <div id="header-mount"></div>
     <main class="main-console">
@@ -78,12 +89,12 @@ async function init() {
         <div id="corner-mount"></div>
         <div id="telemetry-analyzer-mount" style="flex: 1; min-height: 0; display: flex; flex-direction: column;"></div>
       </section>
-      <section class="deck" id="intercom-deck">
-        <div id="debrief-mount"></div>
-        <div id="intercom-mount"></div>
-      </section>
+      <div id="transponder-mount"></div>
     </main>
   `;
+
+  // Attach global keyboard shortcuts
+  window.addEventListener("keydown", handleGlobalKeyDown);
 
   // Fetch initial sessions
   try {
@@ -92,7 +103,11 @@ async function init() {
       // Prioritize Race if available, else FP2
       const race = state.sessions.find((s) => s.session_id === "2026_01_R");
       const melbourne = state.sessions.find((s) => s.session_id === "2026_01_FP2");
-      state.currentSessionId = race ? race.session_id : (melbourne ? melbourne.session_id : state.sessions[0].session_id);
+      state.currentSessionId = race
+        ? race.session_id
+        : melbourne
+        ? melbourne.session_id
+        : state.sessions[0].session_id;
     }
 
     await loadSessionData(state.currentSessionId);
@@ -173,8 +188,9 @@ async function loadTeamData() {
 function renderAll(filteredHighlights?: SessionHighlight[]) {
   const currentTeamInfo = state.teams.find((t) => t.team === state.currentTeam);
   const activeDrivers = currentTeamInfo?.drivers || [];
+  const activeHighlights = filteredHighlights || state.highlights;
 
-  // 1. Header
+  // 1. Pinned Compact Header (38px)
   const headerMount = document.querySelector("#header-mount") as HTMLElement;
   if (headerMount) {
     renderHeader(
@@ -184,7 +200,6 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
       state.teams,
       state.currentTeam,
       state.currentRunType,
-      state.currentTheme,
       {
         onSessionChange: async (newSession) => {
           state.currentSessionId = newSession;
@@ -198,16 +213,11 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
           state.currentRunType = newRun;
           await loadTeamData();
         },
-        onThemeToggle: () => {
-          state.currentTheme = state.currentTheme === "light" ? "dark" : "light";
-          document.documentElement.setAttribute("data-theme", state.currentTheme);
-          renderAll(filteredHighlights);
-        },
       }
     );
   }
 
-  // 2. Corner Deck (Top Left)
+  // 2. Corner Stepper & Horizontal Driver Cassettes (Top Deck)
   const cornerMount = document.querySelector("#corner-mount") as HTMLElement;
   if (cornerMount) {
     renderCornerDeck(
@@ -224,13 +234,13 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
             corner,
             state.currentRunType
           );
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
       }
     );
   }
 
-  // 3. Telemetry Analyzer (Bottom Left — Segment Deltas, Tyre Deg, 2026 Energy, Race Replay)
+  // 3. Full-Width Strategy & Telemetry Analyzer (Flex-1 Deck)
   const analyzerMount = document.querySelector("#telemetry-analyzer-mount") as HTMLElement;
   if (analyzerMount) {
     renderTelemetryAnalyzer(
@@ -242,10 +252,11 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
       state.selectedCompound,
       state.energySignatures,
       state.replayState,
+      activeHighlights,
       {
         onTabChange: (tab) => {
           state.selectedTelemetryTab = tab;
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
         onToggleSignificantOnly: async (onlySig) => {
           state.onlySignificant = onlySig;
@@ -255,7 +266,7 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
             state.currentRunType,
             state.onlySignificant
           );
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
         onCompoundSelect: async (comp) => {
           state.selectedCompound = comp;
@@ -263,11 +274,11 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
             state.currentSessionId,
             state.selectedCompound
           );
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
         onReplayLapChange: (lap) => {
           state.replayState.currentLap = lap;
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
         onReplayPlayToggle: () => {
           state.replayState.isPlaying = !state.replayState.isPlaying;
@@ -275,38 +286,115 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
             if (replayInterval) clearInterval(replayInterval);
             replayInterval = window.setInterval(() => {
               state.replayState.currentLap = (state.replayState.currentLap % state.replayState.totalLaps) + 1;
-              renderAll(filteredHighlights);
+              renderAll(activeHighlights);
             }, 800);
           } else {
             if (replayInterval) clearInterval(replayInterval);
           }
-          renderAll(filteredHighlights);
+          renderAll(activeHighlights);
         },
       }
     );
   }
 
-  // 4. Debrief Card (Top Right)
-  const debriefMount = document.querySelector("#debrief-mount") as HTMLElement;
-  if (debriefMount) {
-    renderDebriefCard(debriefMount, filteredHighlights || state.highlights);
-  }
-
-  // 5. Engineer Intercom (Bottom Right — Flex-1 with dynamic team chips)
-  const intercomMount = document.querySelector("#intercom-mount") as HTMLElement;
-  if (intercomMount) {
-    renderEngineerIntercom(
-      intercomMount,
+  // 4. Pinned Radio Transponder Bar & Slide-Up Comms Sheet
+  const transponderMount = document.querySelector("#transponder-mount") as HTMLElement;
+  if (transponderMount) {
+    renderRadioTransponder(
+      transponderMount,
       state.messages,
       state.isTransmitting,
+      state.isDrawerOpen,
       state.currentTeam,
       activeDrivers,
       state.selectedCorner,
       {
         onSendMessage: (text) => handleChat(text),
         onChipClick: (text) => handleChat(text),
+        onAnchorClick: (corner, segment, tab) => handleDeepLink(corner, segment, tab),
+        onDrawerToggle: (open) => {
+          state.isDrawerOpen = open;
+          renderAll(activeHighlights);
+        },
       }
     );
+  }
+}
+
+// Bidirectional Event Bus: Deep-linking from LLM text to Telemetry Tables
+async function handleDeepLink(corner?: string, segment?: string, tab?: string) {
+  if (tab) {
+    state.selectedTelemetryTab = tab as TelemetryTab;
+  }
+
+  if (corner && state.corners.includes(corner)) {
+    state.selectedCorner = corner;
+    state.cornerMetrics = await compareCorners(
+      state.currentSessionId,
+      state.currentTeam,
+      corner,
+      state.currentRunType
+    );
+  }
+
+  renderAll();
+
+  // Highlight and scroll to target element
+  setTimeout(() => {
+    let targetEl: HTMLElement | null = null;
+    if (segment) {
+      targetEl = document.querySelector(`#row-segment-${segment}`);
+    } else if (corner) {
+      targetEl = document.querySelector(`#btn-corner-${corner}`);
+    }
+
+    if (targetEl) {
+      targetEl.classList.add("flash-highlight");
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => {
+        targetEl?.classList.remove("flash-highlight");
+      }, 2500);
+    }
+  }, 60);
+}
+
+// Global Keyboard Navigation
+function handleGlobalKeyDown(e: KeyboardEvent) {
+  // If user is currently typing in an input field, do not hijack keys
+  const targetTag = (e.target as HTMLElement)?.tagName;
+  if (targetTag === "INPUT" || targetTag === "TEXTAREA" || targetTag === "SELECT") {
+    if (e.key === "Escape" && state.isDrawerOpen) {
+      state.isDrawerOpen = false;
+      renderAll();
+    }
+    return;
+  }
+
+  // Ctrl + / or Cmd + / : Toggle Comms Sheet
+  if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+    e.preventDefault();
+    state.isDrawerOpen = !state.isDrawerOpen;
+    renderAll();
+    return;
+  }
+
+  // Escape: Close Comms Sheet
+  if (e.key === "Escape" && state.isDrawerOpen) {
+    state.isDrawerOpen = false;
+    renderAll();
+    return;
+  }
+
+  // ArrowLeft / ArrowRight: Navigate Corners
+  if (state.corners.length > 0) {
+    const currentIndex = state.corners.indexOf(state.selectedCorner);
+    if (e.key === "ArrowLeft" && currentIndex > 0) {
+      const prevCorner = state.corners[currentIndex - 1];
+      handleDeepLink(prevCorner);
+    } else if (e.key === "ArrowRight" && currentIndex < state.corners.length - 1) {
+      const nextCorner = state.corners[currentIndex + 1];
+      handleDeepLink(nextCorner);
+    }
   }
 }
 
