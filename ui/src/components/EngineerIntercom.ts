@@ -5,24 +5,94 @@ export interface IntercomCallbacks {
   onChipClick: (text: string) => void;
 }
 
+export function getContextualChips(team: string, drivers: string[], corner: string): string[] {
+  const d1 = drivers[0] || "DRIVER A";
+  const d2 = drivers[1] || "DRIVER B";
+  const c = corner || "T1";
+  const teamLower = team.toLowerCase();
+
+  if (teamLower.includes("ferrari")) {
+    return [
+      `Compare ${c} apex speeds: Leclerc vs Hamilton`,
+      `Analyze Hamilton vs Leclerc opening sector deltas`,
+      `Summarize Ferrari setup hypotheses for ${c}`,
+      `Ferrari tyre degradation on Medium compound`,
+    ];
+  }
+  if (teamLower.includes("mclaren")) {
+    return [
+      `Compare ${c} braking: Piastri vs Norris`,
+      `Analyze McLaren sector deltas into ${c}`,
+      `Compare apex speed dwell ratio for Norris in ${c}`,
+      `McLaren Medium vs Hard tyre degradation slope`,
+    ];
+  }
+  if (teamLower.includes("mercedes")) {
+    return [
+      `Compare Russell and Antonelli into ${c}`,
+      `What is Antonelli's tyre degradation on Hards?`,
+      `Analyze Mercedes teammate deltas in ${c}`,
+      `Mercedes straight-line speed derate signature`,
+    ];
+  }
+  if (teamLower.includes("red bull")) {
+    return [
+      `Compare Verstappen and Lawson apex speeds in ${c}`,
+      `Red Bull long-run tyre degradation pace`,
+      `Analyze Verstappen braking distance in ${c}`,
+      `Red Bull straight-line energy deployment`,
+    ];
+  }
+  if (teamLower.includes("williams")) {
+    return [
+      `Did Williams suffer energy clipping on straights?`,
+      `Compare Albon vs Sainz in ${c} apex speed`,
+      `Williams tyre degradation on Hard compound`,
+      `Analyze Albon vs Sainz segment deltas`,
+    ];
+  }
+  if (teamLower.includes("audi")) {
+    return [
+      `Audi debut telemetry: Hulkenberg vs Bortoleto`,
+      `Compare ${c} braking points between Audi drivers`,
+      `Audi energy clipping on straights`,
+      `Audi baseline stint pace and tyre degradation`,
+    ];
+  }
+  if (teamLower.includes("cadillac")) {
+    return [
+      `Compare Bottas and Perez apex speeds in ${c}`,
+      `Cadillac baseline pace on Medium tyres`,
+      `Cadillac straight-line energy clipping flag`,
+      `Bottas vs Perez braking onset distance in ${c}`,
+    ];
+  }
+
+  // Generic constructor fallback with real driver names
+  return [
+    `Compare ${c} apex speeds: ${d1} vs ${d2}`,
+    `Analyze ${team} teammate segment deltas`,
+    `What is ${d1}'s tyre degradation slope?`,
+    `Did ${team} suffer straight-line energy clipping?`,
+  ];
+}
+
 export function renderEngineerIntercom(
   container: HTMLElement,
   messages: ChatMessage[],
   isTransmitting: boolean,
+  currentTeam: string,
+  drivers: string[],
+  currentCorner: string,
   callbacks: IntercomCallbacks
 ): void {
-  const chips = [
-    "Compare T1 apex speeds between teammates",
-    "What is Antonelli's tyre degradation on Hards?",
-    "Did Williams experience energy clipping on straights?",
-    "Ferrari setup hypotheses for T3",
-  ];
+  const chips = getContextualChips(currentTeam, drivers, currentCorner);
 
   container.innerHTML = `
     <div class="card intercom-container">
       <div class="card-header">
         <div class="card-title">
-          <span>[ AI RACE ENGINEER INTERCOM ]</span>
+          <span>[ AI RACE ENGINEER INTERCOM — ${currentTeam.toUpperCase()} ]</span>
         </div>
         <div class="card-meta">
           <span class="status-tag ${isTransmitting ? "loading" : ""}">
@@ -36,10 +106,10 @@ export function renderEngineerIntercom(
         ${
           messages.length === 0
             ? `
-          <div style="padding: 48px 16px; text-align: center; font-family: var(--font-mono); color: var(--text-disabled);">
-            <div>[ PIT WALL AI RACE ENGINEER STANDBY ]</div>
-            <div style="font-size: var(--caption); margin-top: 8px;">
-              Ask ad-hoc questions regarding braking points, tyre degradation, or teammate segment deltas.
+          <div style="padding: 32px 16px; text-align: center; font-family: var(--font-mono); color: var(--text-disabled);">
+            <div>[ PIT WALL AI RACE ENGINEER STANDBY — ${currentTeam.toUpperCase()} ]</div>
+            <div style="font-size: 11px; margin-top: 6px; color: var(--text-secondary);">
+              Transmitting telemetry inquiries for ${drivers.join(" & ") || "team drivers"}. Select a prompt below or type your technical query.
             </div>
           </div>
         `
@@ -49,7 +119,7 @@ export function renderEngineerIntercom(
                   return `
                 <div class="message-item ${isUser ? "user" : "assistant"}">
                   <div class="message-meta">
-                    <span>${isUser ? "[ PIT WALL ]" : "[ RACE ENGINEER ]"}</span>
+                    <span>${isUser ? `[ PIT WALL / ${currentTeam} ]` : "[ RACE ENGINEER ]"}</span>
                     <span>${m.timestamp}</span>
                     ${
                       !isUser && m.grounded !== undefined
@@ -67,7 +137,7 @@ export function renderEngineerIntercom(
         }
       </div>
 
-      <!-- Quick Suggestion Chips -->
+      <!-- Quick Suggestion Chips (Context-Aware) -->
       <div class="quick-chips">
         ${chips
           .map(
@@ -86,7 +156,7 @@ export function renderEngineerIntercom(
           type="text"
           id="chat-input"
           class="chat-input"
-          placeholder="Transmit technical inquiry to AI Race Engineer..."
+          placeholder="Transmit technical inquiry to ${currentTeam} race engineer..."
           ${isTransmitting ? "disabled" : ""}
         />
         <button id="send-btn" class="btn-send" ${isTransmitting ? "disabled" : ""}>

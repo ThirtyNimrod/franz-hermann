@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Literal
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -103,13 +104,18 @@ def list_drivers(session_id: str) -> dict[str, Any]:
 
 @app.get("/api/sessions/{session_id}/corners")
 def list_corners(session_id: str) -> list[str]:
-    """List ordered track corner markers for a session."""
+    """List ordered unique track corner markers for a session in natural numerical order (T1, T2, ...)."""
     rows = _query(
-        "SELECT DISTINCT corner, corner_order FROM corner_metrics "
-        "WHERE session_id = ? ORDER BY corner_order",
+        "SELECT DISTINCT corner FROM corner_metrics WHERE session_id = ?",
         [session_id],
     )
-    return [r["corner"] for r in rows]
+    def _corner_sort_key(c: str) -> tuple[int, str]:
+        match = re.search(r"\d+", c)
+        num = int(match.group()) if match else 999
+        return (num, c)
+
+    corners = sorted([r["corner"] for r in rows], key=_corner_sort_key)
+    return corners
 
 
 @app.get("/api/sessions/{session_id}/highlights")

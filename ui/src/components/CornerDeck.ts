@@ -14,6 +14,13 @@ export function renderCornerDeck(
   // If no metrics loaded or empty
   const [driverA, driverB] = metrics;
 
+  // Defensive deduplication and natural sorting (T1, T2, ... T14)
+  const sortedCorners = Array.from(new Set(corners)).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, "") || "999", 10);
+    const numB = parseInt(b.replace(/\D/g, "") || "999", 10);
+    return numA - numB;
+  });
+
   container.innerHTML = `
     <div class="card">
       <div class="card-header">
@@ -27,7 +34,7 @@ export function renderCornerDeck(
 
       <!-- Corner Stepper Strip -->
       <div class="corner-strip">
-        ${corners
+        ${sortedCorners
           .map(
             (c) => `
             <button class="corner-btn ${c === selectedCorner ? "active" : ""}" data-corner="${c}">

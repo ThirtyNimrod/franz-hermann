@@ -63,14 +63,18 @@ def f1_list_drivers(session_id: str) -> list[dict]:
 
 @mcp.tool(annotations=RO)
 def f1_list_corners(session_id: str) -> list[str]:
-    """Corner labels available for a session, in track order (e.g. 'T1', 'T4', 'T9A')."""
+    """Corner labels available for a session, in track order (e.g. 'T1', 'T2', ...)."""
     _require_session(session_id)
     rows = _rows(
-        "SELECT DISTINCT corner, corner_order FROM corner_metrics "
-        "WHERE session_id = ? ORDER BY corner_order",
+        "SELECT DISTINCT corner FROM corner_metrics WHERE session_id = ?",
         [session_id],
     )
-    return [r["corner"] for r in rows]
+    def _corner_sort_key(c: str) -> tuple[int, str]:
+        match = re.search(r"\d+", c)
+        num = int(match.group()) if match else 999
+        return (num, c)
+
+    return sorted([r["corner"] for r in rows], key=_corner_sort_key)
 
 
 @mcp.tool(annotations=RO)

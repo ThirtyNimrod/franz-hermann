@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F1 AI Race Engineer — Standalone Console Demo (Nothing Design System)</title>
+  <!-- Google Fonts: Doto, Space Grotesk, Space Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Doto:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* Nothing Design System Tokens */
+    :root, [data-theme="light"] {
+      --black: #F5F5F5;
+      --surface: #FFFFFF;
+      --surface-raised: #F0F0F0;
+      --border: #E8E8E8;
+      --border-visible: #CCCCCC;
+      --text-disabled: #999999;
+      --text-secondary: #666666;
+      --text-primary: #1A1A1A;
+      --text-display: #000000;
+      --accent: #D71921;
+      --accent-subtle: rgba(215, 25, 33, 0.12);
+      --success: #4A9E5C;
+      --warning: #D4A843;
+      --font-display: "Doto", "Space Mono", monospace;
+      --font-body: "Space Grotesk", system-ui, sans-serif;
+      --font-mono: "Space Mono", monospace;
+      --radius-card: 10px;
+      --radius-technical: 4px;
+      --radius-pill: 999px;
+      --transition-fast: 150ms cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    [data-theme="dark"] {
+      --black: #000000;
+      --surface: #111111;
+      --surface-raised: #1A1A1A;
+      --border: #222222;
+      --border-visible: #333333;
+      --text-disabled: #666666;
+      --text-secondary: #999999;
+      --text-primary: #E8E8E8;
+      --text-display: #FFFFFF;
+      --accent-subtle: rgba(215, 25, 33, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-visible); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+    body {
+      background-color: var(--black);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.45;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1199px) { body { height: auto; overflow-y: auto; } }
+
+    /* Header */
+    .app-header {
+      height: 52px;
+      border-bottom: 1px solid var(--border-visible);
+      background-color: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .brand-section { display: flex; align-items: center; gap: 8px; }
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-display);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-visible);
+      padding: 2px 6px;
+      border-radius: var(--radius-technical);
+    }
+
+    .header-controls { display: flex; align-items: center; gap: 12px; }
+    .track-clock {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: var(--radius-technical);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .track-clock-live { width: 6px; height: 6px; background-color: var(--success); border-radius: 50%; }
+
+    .select-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .select-input {
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border-visible);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: var(--radius-technical);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-toggle-theme {
+      background: transparent;
+      border: 1px solid var(--border-visible);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-fast);
+    }
+    .btn-toggle-theme:hover { border-color: var(--text-display); color: var(--text-display); }
+
+    /* Layout */
+    .main-console {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 12px;
+      padding: 8px 16px 12px 16px;
+      max-width: 1920px;
+      margin: 0 auto;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }
+
+    @media (max-width: 1199px) { .main-console { grid-template-columns: 1fr; height: auto; overflow-y: visible; } }
+
+    .deck { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
+    @media (max-width: 1199px) { .deck { height: auto; overflow: visible; } }
+
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: var(--radius-card);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      flex-shrink: 0;
+    }
+    .card-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .card-meta { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--text-disabled); }
+
+    /* Stepper Buttons */
+    .corner-strip { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding-bottom: 2px; flex-shrink: 0; }
+    .corner-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: var(--radius-technical);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition-fast);
+    }
+    .corner-btn:hover { border-color: var(--border-visible); color: var(--text-primary); }
+    .corner-btn.active { background-color: var(--text-display); color: var(--black); border-color: var(--text-display); font-weight: 700; }
+
+    /* Telemetry Columns */
+    .teammate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
+    .telemetry-column {
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .driver-tag-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+    .driver-code { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--text-display); }
+    .corner-style-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-visible);
+      color: var(--text-primary);
+    }
+
+    .hero-metric { display: flex; flex-direction: column; gap: 1px; }
+    .hero-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    .hero-value-wrap { display: flex; align-items: baseline; gap: 4px; }
+    .hero-value { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--text-display); line-height: 1; }
+    .hero-unit { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    .hero-spread { font-family: var(--font-mono); font-size: 11px; color: var(--text-disabled); }
+
+    /* Segmented Bar */
+    .seg-bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+    .seg-bar-header { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    .seg-bar { display: flex; gap: 2px; width: 100%; height: 6px; }
+    .seg-block { flex: 1; background-color: var(--border); border-radius: 0; }
+    .seg-block.filled { background-color: var(--text-display); }
+
+    .stat-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    .stat-value { font-size: 11px; color: var(--text-display); font-weight: 700; }
+
+    /* Segmented Control Tabs */
+    .segmented-nav-tabs {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border-visible);
+      border-radius: var(--radius-pill);
+      padding: 2px;
+      background-color: var(--surface-raised);
+    }
+    .nav-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .nav-tab-btn:hover { color: var(--text-primary); }
+    .nav-tab-btn.active { background-color: var(--text-display); color: var(--black); font-weight: 700; }
+
+    .table-scroll-container { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
+    .data-table th {
+      position: sticky; top: 0; background-color: var(--surface);
+      text-align: left; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary);
+      padding: 6px 8px; border-bottom: 1px solid var(--border-visible); z-index: 2;
+    }
+    .data-table th.num, .data-table td.num { text-align: right; }
+    .data-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+    .data-table tr.active-row { background-color: var(--surface-raised); border-left: 2px solid var(--accent); }
+
+    .delta-badge { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 1px 6px; border-radius: var(--radius-technical); display: inline-block; }
+    .delta-badge.significant { background-color: var(--accent-subtle); color: var(--accent); border: 1px solid var(--accent); }
+    .delta-badge.neutral { border: 1px solid var(--border); color: var(--text-disabled); }
+
+    .clipping-signal { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--radius-pill); }
+    .clipping-signal.active { background-color: var(--accent-subtle); color: var(--accent); border: 1px solid var(--accent); }
+    .signal-dot { width: 5px; height: 5px; border-radius: 50%; background-color: currentColor; }
+
+    /* Intercom */
+    .intercom-container { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .messages-stream { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+    .message-item { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 6px; font-size: 12px; line-height: 1.4; }
+    .message-item.user { background-color: var(--surface-raised); border: 1px solid var(--border-visible); align-self: flex-end; max-width: 85%; }
+    .message-item.assistant { background-color: var(--surface); border: 1px solid var(--border); align-self: flex-start; max-width: 95%; }
+    .message-meta { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+    .message-meta .badge-grounded { color: var(--success); border: 1px solid var(--success); padding: 0 4px; border-radius: 2px; }
+    .message-text { color: var(--text-primary); font-family: var(--font-body); }
+
+    .quick-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; flex-shrink: 0; }
+    .chip-btn {
+      background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; padding: 3px 8px; border-radius: var(--radius-pill); cursor: pointer; transition: var(--transition-fast);
+    }
+    .chip-btn:hover { border-color: var(--border-visible); color: var(--text-primary); }
+
+    .input-bar { display: flex; gap: 6px; margin-top: 6px; flex-shrink: 0; }
+    .chat-input {
+      flex: 1; background-color: var(--surface-raised); border: 1px solid var(--border-visible);
+      color: var(--text-display); font-family: var(--font-mono); font-size: 11px; padding: 6px 12px; border-radius: var(--radius-pill); outline: none;
+    }
+    .chat-input:focus { border-color: var(--text-display); }
+    .btn-send {
+      background-color: var(--text-display); color: var(--black); border: none; font-family: var(--font-mono);
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; padding: 0 14px; border-radius: var(--radius-pill); cursor: pointer; transition: var(--transition-fast);
+    }
+    .btn-send:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-title">
+        <span>●</span>
+        <span>F1 AI RACE ENGINEER</span>
+      </div>
+      <span class="brand-badge">V2.0 / STANDALONE DEMO</span>
+    </div>
+
+    <div class="header-controls">
+      <div class="track-clock">
+        <span class="track-clock-live"></span>
+        <span>TRACK UTC: <strong id="utc-clock">--:--:--</strong></span>
+      </div>
+
+      <div class="select-wrapper">
+        <label for="session-select">SESSION:</label>
+        <select id="session-select" class="select-input">
+          <option value="2026_01_R" selected>2026_01_R (Australian GP - Race)</option>
+          <option value="2026_01_FP2">2026_01_FP2 (Australian GP - FP2)</option>
+        </select>
+      </div>
+
+      <div class="select-wrapper">
+        <label for="team-select">CONSTRUCTOR:</label>
+        <select id="team-select" class="select-input">
+          <option value="McLaren" selected>McLaren [PIA / NOR]</option>
+          <option value="Ferrari">Ferrari [LEC / HAM]</option>
+          <option value="Mercedes">Mercedes [RUS / ANT]</option>
+          <option value="Red Bull Racing">Red Bull [VER / LAW]</option>
+          <option value="Williams">Williams [ALB / SAI]</option>
+          <option value="Audi">Audi [HUL / BOR]</option>
+          <option value="Cadillac">Cadillac [BOT / PER]</option>
+        </select>
+      </div>
+
+      <div class="select-wrapper">
+        <label for="run-type-select">RUN:</label>
+        <select id="run-type-select" class="select-input">
+          <option value="long_run" selected>LONG RUN (RACE SIM)</option>
+          <option value="push">PUSH (QUALIFYING)</option>
+        </select>
+      </div>
+
+      <button id="theme-toggle-btn" class="btn-toggle-theme">
+        <span id="theme-icon">☾</span>
+        <span id="theme-label">[ DARK ]</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Dual-Deck Main Console -->
+  <main class="main-console">
+    <!-- LEFT DECK: Telemetry & Strategy -->
+    <section class="deck">
+      <!-- 1. Corner Telemetry Instrument -->
+      <div class="card" style="flex-shrink: 0; max-height: 380px;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>[ CORNER TELEMETRY INSTRUMENT ]</span>
+          </div>
+          <div class="card-meta">
+            ACTIVE: <span id="active-corner-label">T1</span>
+          </div>
+        </div>
+
+        <!-- Ordered Unique Corners T1 through T14 -->
+        <div class="corner-strip" id="corner-strip"></div>
+
+        <!-- Teammate Side-by-Side Comparison -->
+        <div class="teammate-grid" id="teammate-grid"></div>
+      </div>
+
+      <!-- 2. Telemetry & Strategy Analyzer (Tabs) -->
+      <div class="card" style="flex: 1; min-height: 0; display: flex; flex-direction: column;">
+        <div class="card-header">
+          <div class="card-title">
+            <span>[ TELEMETRY & STRATEGY ANALYZER ]</span>
+          </div>
+
+          <div class="segmented-nav-tabs">
+            <button class="nav-tab-btn active" data-tab="segments">SEGMENTS</button>
+            <button class="nav-tab-btn" data-tab="tyre">TYRE DEG</button>
+            <button class="nav-tab-btn" data-tab="energy">2026 ENERGY</button>
+            <button class="nav-tab-btn" data-tab="replay" style="color: var(--accent); font-weight: 700;">● RACE REPLAY</button>
+          </div>
+        </div>
+
+        <div class="table-scroll-container" id="analyzer-content"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT DECK: Debrief & AI Intercom -->
+    <section class="deck">
+      <!-- 1. Post-Session Debrief Card -->
+      <div class="card" style="flex-shrink: 0; max-height: 250px; overflow-y: auto;" id="debrief-card"></div>
+
+      <!-- 2. AI Race Engineer Intercom -->
+      <div class="card intercom-container">
+        <div class="card-header">
+          <div class="card-title">
+            <span id="intercom-title">[ AI RACE ENGINEER INTERCOM ]</span>
+          </div>
+          <div class="card-meta">
+            <span class="status-tag">[ RADIO CHANNEL OPEN ]</span>
+          </div>
+        </div>
+
+        <div class="messages-stream" id="messages-stream"></div>
+        <div class="quick-chips" id="quick-chips"></div>
+
+        <div class="input-bar">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Transmit inquiry to race engineer..." />
+          <button id="send-btn" class="btn-send">[ SEND ]</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Embedded Data Models for Melbourne 2026 FP2 & Race
+    const TEAMS_DATA = {
+      "McLaren": {
+        drivers: ["PIA", "NOR"],
+        cornerStyle: ["V-style", "V-style"],
+        debrief: {
+          summary: "McLaren secured a clinical 1-2 finish with a Medium-Hard-Medium two-stop strategy, displaying superior high-speed balance.",
+          d1Gain: "0.19 s in start-T1", d1Loss: "0.08 s in T9-T10", d1Hypo: "Front wing flap angle +0.5 deg stabilized apex rotation.",
+          d2Gain: "0.11 s in T11-T12", d2Loss: "0.19 s in start-T1", d2Hypo: "Differential entry preload reduced apex understeer."
+        },
+        tyre: [
+          { drv: "PIA", comp: "MEDIUM", deg: 0.042, base: 80.41, laps: 18 },
+          { drv: "PIA", comp: "HARD", deg: 0.025, base: 80.95, laps: 22 },
+          { drv: "NOR", comp: "MEDIUM", deg: 0.046, base: 80.52, laps: 18 },
+          { drv: "NOR", comp: "HARD", deg: 0.027, base: 81.08, laps: 22 }
+        ],
+        energy: [
+          { straight: "start_straight", drv: "PIA", vPeak: 321.4, lateLoss: 1.8, clip: false },
+          { straight: "straight_after_T8", drv: "NOR", vPeak: 320.8, lateLoss: 2.1, clip: false }
+        ]
+      },
+      "Ferrari": {
+        drivers: ["LEC", "HAM"],
+        cornerStyle: ["U-style", "V-style"],
+        debrief: {
+          summary: "Ferrari clinched P3 and P4 with consistent long-run degradation on the Hard compound, showing high apex roll speed.",
+          d1Gain: "0.14 s in T13-T14", d1Loss: "0.12 s in T3-T4", d1Hypo: "Stiffened rear anti-roll bar maximized high-speed corner stability.",
+          d2Gain: "0.09 s in T1-T2", d2Loss: "0.14 s in T13-T14", d2Hypo: "Brake bias migrated 1% forward stabilized heavy braking into T1."
+        },
+        tyre: [
+          { drv: "LEC", comp: "MEDIUM", deg: 0.048, base: 80.65, laps: 17 },
+          { drv: "LEC", comp: "HARD", deg: 0.028, base: 81.12, laps: 24 },
+          { drv: "HAM", comp: "MEDIUM", deg: 0.049, base: 80.72, laps: 17 },
+          { drv: "HAM", comp: "HARD", deg: 0.029, base: 81.18, laps: 24 }
+        ],
+        energy: [
+          { straight: "start_straight", drv: "LEC", vPeak: 322.8, lateLoss: 2.2, clip: false },
+          { straight: "straight_after_T8", drv: "HAM", vPeak: 321.9, lateLoss: 2.4, clip: false }
+        ]
+      },
+      "Mercedes": {
+        drivers: ["RUS", "ANT"],
+        cornerStyle: ["U-style", "V-style"],
+        debrief: {
+          summary: "Mercedes secured P5 and P6 on Antonelli's debut, managing energy clipping on long straights.",
+          d1Gain: "0.08 s in T6-T7", d1Loss: "0.15 s in start-T1", d1Hypo: "Softer front heave spring improved kerb riding through the chicane.",
+          d2Gain: "0.07 s in T11-T12", d2Loss: "0.12 s in T1-T2", d2Hypo: "Throttle mapping curve 2 smoothed power delivery on corner exit."
+        },
+        tyre: [
+          { drv: "RUS", comp: "HARD", deg: 0.031, base: 81.25, laps: 22 },
+          { drv: "ANT", comp: "HARD", deg: 0.026, base: 81.38, laps: 22 }
+        ],
+        energy: [
+          { straight: "start_straight", drv: "RUS", vPeak: 319.5, lateLoss: 5.4, clip: false },
+          { straight: "straight_after_T8", drv: "ANT", vPeak: 318.2, lateLoss: 6.2, clip: false }
+        ]
+      },
+      "Williams": {
+        drivers: ["ALB", "SAI"],
+        cornerStyle: ["V-style", "U-style"],
+        debrief: {
+          summary: "Williams displayed competitive peak speed but encountered severe electrical energy derate before the braking zone of T9.",
+          d1Gain: "0.15 s in straight_after_T2", d1Loss: "0.28 s in straight_after_T8", d1Hypo: "Deployment strategy depleted state-of-charge 250m before braking.",
+          d2Gain: "0.09 s in T3-T4", d2Loss: "0.22 s in straight_after_T8", d2Hypo: "Diff lock entry prevented high-speed oversteer."
+        },
+        tyre: [
+          { drv: "ALB", comp: "HARD", deg: 0.036, base: 81.82, laps: 20 },
+          { drv: "SAI", comp: "HARD", deg: 0.034, base: 81.75, laps: 20 }
+        ],
+        energy: [
+          { straight: "straight_after_T8", drv: "ALB", vPeak: 323.5, lateLoss: 12.8, clip: true },
+          { straight: "start_straight", drv: "SAI", vPeak: 322.1, lateLoss: 10.4, clip: true }
+        ]
+      }
+    };
+
+    // State
+    const state = {
+      theme: "light",
+      currentTeam: "McLaren",
+      currentSession: "2026_01_R",
+      selectedCorner: "T1",
+      activeTab: "segments",
+      onlySignificant: false,
+      selectedCompound: "ALL",
+      replay: { lap: 1, total: 58, isPlaying: false, speed: 1 },
+      messages: []
+    };
+
+    const CORNERS = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12", "T13", "T14"];
+
+    // Clock
+    setInterval(() => {
+      document.getElementById("utc-clock").textContent = new Date().toUTCString().slice(17, 25);
+    }, 1000);
+
+    // Theme Toggle
+    document.getElementById("theme-toggle-btn").addEventListener("click", () => {
+      state.theme = state.theme === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", state.theme);
+      document.getElementById("theme-icon").textContent = state.theme === "light" ? "☾" : "☀";
+      document.getElementById("theme-label").textContent = state.theme === "light" ? "[ DARK ]" : "[ LIGHT ]";
+    });
+
+    // Selectors
+    document.getElementById("team-select").addEventListener("change", (e) => {
+      state.currentTeam = e.target.value;
+      renderAll();
+    });
+
+    document.getElementById("session-select").addEventListener("change", (e) => {
+      state.currentSession = e.target.value;
+      renderAll();
+    });
+
+    // Render Corner Stepper Strip (Strictly Ascending T1 through T14)
+    function renderCornerStrip() {
+      const container = document.getElementById("corner-strip");
+      container.innerHTML = CORNERS.map(c => `
+        <button class="corner-btn ${c === state.selectedCorner ? "active" : ""}" data-corner="${c}">${c}</button>
+      `).join("");
+
+      container.querySelectorAll(".corner-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.selectedCorner = btn.getAttribute("data-corner");
+          renderAll();
+        });
+      });
+      document.getElementById("active-corner-label").textContent = state.selectedCorner;
+    }
+
+    // Render Teammates Corner Comparison
+    function renderTeammates() {
+      const teamInfo = TEAMS_DATA[state.currentTeam] || TEAMS_DATA["McLaren"];
+      const [d1, d2] = teamInfo.drivers;
+      const cIdx = parseInt(state.selectedCorner.replace("T", ""), 10);
+      
+      const v1 = Math.round(175 - (cIdx * 5.1) + (cIdx % 2 === 0 ? 3 : -2));
+      const v2 = Math.round(v1 + (cIdx % 3 === 0 ? -4 : 2));
+      const b1 = (78.0 + cIdx * 3.8).toFixed(1);
+      const b2 = (84.0 + cIdx * 3.6).toFixed(1);
+
+      const filled1 = Math.min(10, Math.round((parseFloat(b1) / 140) * 10));
+      const filled2 = Math.min(10, Math.round((parseFloat(b2) / 140) * 10));
+
+      document.getElementById("teammate-grid").innerHTML = `
+        <div class="telemetry-column">
+          <div class="driver-tag-row">
+            <div class="driver-code">${d1}</div>
+            <div class="corner-style-badge">${teamInfo.cornerStyle[0]}</div>
+          </div>
+          <div class="hero-metric">
+            <div class="hero-label">APEX MINIMUM SPEED</div>
+            <div class="hero-value-wrap">
+              <span class="hero-value">${v1}</span>
+              <span class="hero-unit">KM/H</span>
+            </div>
+            <div class="hero-spread">IQR: ±2.4 KM/H (52 LAPS)</div>
+          </div>
+          <div class="seg-bar-wrap">
+            <div class="seg-bar-header">
+              <span>BRAKE ONSET</span>
+              <span style="font-weight:700; color:var(--text-display);">${b1} M BEFORE</span>
+            </div>
+            <div class="seg-bar">
+              ${Array(filled1).fill('<div class="seg-block filled"></div>').join("")}
+              ${Array(10 - filled1).fill('<div class="seg-block"></div>').join("")}
+            </div>
+          </div>
+          <div>
+            <div class="stat-row"><span class="stat-label">FULL THROTTLE PICKUP</span><span class="stat-value">72.4 M AFTER</span></div>
+            <div class="stat-row"><span class="stat-label">TRANSITION DISTANCE</span><span class="stat-value">150.4 M</span></div>
+            <div class="stat-row"><span class="stat-label">PEAK DECELERATION</span><span class="stat-value">4.62 G</span></div>
+          </div>
+        </div>
+
+        <div class="telemetry-column">
+          <div class="driver-tag-row">
+            <div class="driver-code">${d2}</div>
+            <div class="corner-style-badge">${teamInfo.cornerStyle[1]}</div>
+          </div>
+          <div class="hero-metric">
+            <div class="hero-label">APEX MINIMUM SPEED</div>
+            <div class="hero-value-wrap">
+              <span class="hero-value">${v2}</span>
+              <span class="hero-unit">KM/H</span>
+            </div>
+            <div class="hero-spread">IQR: ±3.1 KM/H (52 LAPS)</div>
+          </div>
+          <div class="seg-bar-wrap">
+            <div class="seg-bar-header">
+              <span>BRAKE ONSET</span>
+              <span style="font-weight:700; color:var(--text-display);">${b2} M BEFORE</span>
+            </div>
+            <div class="seg-bar">
+              ${Array(filled2).fill('<div class="seg-block filled"></div>').join("")}
+              ${Array(10 - filled2).fill('<div class="seg-block"></div>').join("")}
+            </div>
+          </div>
+          <div>
+            <div class="stat-row"><span class="stat-label">FULL THROTTLE PICKUP</span><span class="stat-value">76.8 M AFTER</span></div>
+            <div class="stat-row"><span class="stat-label">TRANSITION DISTANCE</span><span class="stat-value">160.8 M</span></div>
+            <div class="stat-row"><span class="stat-label">PEAK DECELERATION</span><span class="stat-value">4.48 G</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Render Telemetry Analyzer Content (Segments, Tyre, Energy, Race Replay)
+    function renderAnalyzer() {
+      const container = document.getElementById("analyzer-content");
+      const teamInfo = TEAMS_DATA[state.currentTeam] || TEAMS_DATA["McLaren"];
+      const [d1, d2] = teamInfo.drivers;
+
+      if (state.activeTab === "segments") {
+        const segs = [
+          { seg: "start-T1", delta: 0.142, ci: "[+0.082s, +0.202s]", sig: true },
+          { seg: "T1-T2", delta: -0.051, ci: "[-0.092s, -0.010s]", sig: true },
+          { seg: "T3-T4", delta: 0.084, ci: "[+0.031s, +0.137s]", sig: true },
+          { seg: "T6-T7", delta: -0.021, ci: "[-0.065s, +0.023s]", sig: false },
+          { seg: "T9-T10", delta: 0.115, ci: "[+0.062s, +0.168s]", sig: true },
+          { seg: "T13-T14", delta: -0.094, ci: "[-0.148s, -0.040s]", sig: true },
+        ];
+        const displaySegs = state.onlySignificant ? segs.filter(s => s.sig) : segs;
+
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; border-bottom:1px solid var(--border); font-family:var(--font-mono); font-size:10px;">
+            <span>TEAMMATE DELTA: ${d1} vs ${d2}</span>
+            <button id="toggle-sig-btn" class="corner-btn ${state.onlySignificant ? "active" : ""}" style="font-size:10px; padding:2px 8px;">
+              ${state.onlySignificant ? "[ SIGNIFICANT ONLY ]" : "[ ALL SEGMENTS ]"}
+            </button>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>TRACK SEGMENT</th><th class="num">DELTA (${d1} - ${d2})</th><th class="num">90% CONFIDENCE INTERVAL</th><th class="num">STATUS</th></tr></thead>
+            <tbody>
+              ${displaySegs.map(s => `
+                <tr class="${s.sig ? "active-row" : ""}">
+                  <td style="font-weight:700; color:var(--text-display);">${s.seg}</td>
+                  <td class="num" style="font-weight:700; color:${s.sig ? (s.delta > 0 ? "var(--accent)" : "var(--success)") : "var(--text-primary)"}">
+                    ${s.delta > 0 ? "+" : ""}${s.delta.toFixed(3)} S
+                  </td>
+                  <td class="num" style="color:var(--text-secondary);">${s.ci}</td>
+                  <td class="num"><span class="delta-badge ${s.sig ? "significant" : "neutral"}">${s.sig ? "[SIGNIFICANT]" : "[SPREAD/NOISE]"}</span></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+        document.getElementById("toggle-sig-btn")?.addEventListener("click", () => {
+          state.onlySignificant = !state.onlySignificant;
+          renderAnalyzer();
+        });
+      }
+      else if (state.activeTab === "tyre") {
+        container.innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>DRIVER</th><th>TYRE</th><th class="num">DEG SLOPE (S/LAP)</th><th class="num">BASE PACE</th><th class="num">LAPS</th></tr></thead>
+            <tbody>
+              ${teamInfo.tyre.map(t => `
+                <tr>
+                  <td style="font-weight:700; color:var(--text-display);">${t.drv}</td>
+                  <td><span class="corner-style-badge">${t.comp}</span></td>
+                  <td class="num" style="font-weight:700; color:${t.deg > 0.04 ? "var(--warning)" : "var(--text-display)"}">+${t.deg.toFixed(3)} s/lap</td>
+                  <td class="num" style="color:var(--text-secondary);">${t.base.toFixed(2)}s</td>
+                  <td class="num" style="color:var(--text-disabled);">${t.laps}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+      else if (state.activeTab === "energy") {
+        container.innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>STRAIGHT</th><th>DRIVER</th><th class="num">V_PEAK</th><th class="num">LATE LOSS</th><th class="num">BATTERY CLIPPING</th></tr></thead>
+            <tbody>
+              ${teamInfo.energy.map(e => `
+                <tr class="${e.clip ? "active-row" : ""}">
+                  <td style="font-weight:700; color:var(--text-display);">${e.straight}</td>
+                  <td>${e.drv}</td>
+                  <td class="num" style="font-weight:700;">${Math.round(e.vPeak)} KM/H</td>
+                  <td class="num" style="color:${e.clip ? "var(--accent)" : "var(--text-secondary)"};">-${e.lateLoss.toFixed(1)} KM/H</td>
+                  <td class="num"><span class="clipping-signal ${e.clip ? "active" : ""}"><span class="signal-dot"></span><span>${e.clip ? "[CLIPPING ALERT]" : "[NORMAL DEPLOY]"}</span></span></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      }
+      else if (state.activeTab === "replay") {
+        const replayRoster = [
+          { pos: 1, drv: "PIA", team: "McLaren", gap: "LEADER", lap: "1:20.412", comp: "M", age: state.replay.lap % 19, pits: Math.floor(state.replay.lap / 19) },
+          { pos: 2, drv: "NOR", team: "McLaren", gap: `+${(1.4 + state.replay.lap * 0.04).toFixed(3)}s`, lap: "1:20.584", comp: "M", age: state.replay.lap % 19, pits: Math.floor(state.replay.lap / 19) },
+          { pos: 3, drv: "LEC", team: "Ferrari", gap: `+${(3.8 + state.replay.lap * 0.08).toFixed(3)}s`, lap: "1:20.890", comp: "H", age: state.replay.lap % 24, pits: Math.floor(state.replay.lap / 24) },
+          { pos: 4, drv: "HAM", team: "Ferrari", gap: `+${(5.2 + state.replay.lap * 0.11).toFixed(3)}s`, lap: "1:20.940", comp: "H", age: state.replay.lap % 24, pits: Math.floor(state.replay.lap / 24) },
+          { pos: 5, drv: "RUS", team: "Mercedes", gap: `+${(8.9 + state.replay.lap * 0.16).toFixed(3)}s`, lap: "1:21.210", comp: "H", age: state.replay.lap % 22, pits: Math.floor(state.replay.lap / 22) },
+          { pos: 6, drv: "ANT", team: "Mercedes", gap: `+${(11.4 + state.replay.lap * 0.18).toFixed(3)}s`, lap: "1:21.350", comp: "H", age: state.replay.lap % 22, pits: Math.floor(state.replay.lap / 22) },
+          { pos: 7, drv: "VER", team: "Red Bull", gap: `+${(14.2 + state.replay.lap * 0.22).toFixed(3)}s`, lap: "1:21.512", comp: "M", age: state.replay.lap % 18, pits: Math.floor(state.replay.lap / 18) },
+          { pos: 8, drv: "ALB", team: "Williams", gap: `+${(18.5 + state.replay.lap * 0.28).toFixed(3)}s`, lap: "1:21.904", comp: "M", age: state.replay.lap % 18, pits: Math.floor(state.replay.lap / 18) }
+        ];
+
+        container.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="background-color:var(--surface-raised); border:1px solid var(--border-visible); border-radius:6px; padding:6px 10px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button id="replay-play-btn" class="btn-send" style="padding:2px 10px; font-size:10px;">
+                  ${state.replay.isPlaying ? "[ ❚❚ PAUSE ]" : "[ ▶ PLAY ]"}
+                </button>
+                <span style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text-display);">
+                  LAP: ${state.replay.lap} / ${state.replay.total}
+                </span>
+              </div>
+              <input type="range" id="replay-scrubber" min="1" max="${state.replay.total}" value="${state.replay.lap}" style="flex:1; accent-color:var(--accent); cursor:pointer;" />
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-secondary);">SPEED: 1x</span>
+            </div>
+
+            <table class="data-table">
+              <thead><tr><th>POS</th><th>DRIVER</th><th>TEAM</th><th class="num">GAP</th><th class="num">LAST LAP</th><th class="num">TYRE</th><th class="num">PITS</th></tr></thead>
+              <tbody>
+                ${replayRoster.map(r => `
+                  <tr>
+                    <td style="font-weight:700; color:var(--text-display);">P${r.pos}</td>
+                    <td style="font-weight:700;">${r.drv}</td>
+                    <td style="color:var(--text-secondary);">${r.team}</td>
+                    <td class="num" style="font-weight:700; color:${r.pos === 1 ? "var(--success)" : "var(--text-display)"}">${r.gap}</td>
+                    <td class="num" style="color:var(--text-secondary);">${r.lap}</td>
+                    <td class="num"><span class="corner-style-badge" style="font-size:9px; padding:1px 4px;">${r.comp}</span> (${r.age}L)</td>
+                    <td class="num" style="color:var(--text-disabled);">${r.pits}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        document.getElementById("replay-scrubber")?.addEventListener("input", (e) => {
+          state.replay.lap = parseInt(e.target.value, 10);
+          renderAnalyzer();
+        });
+
+        document.getElementById("replay-play-btn")?.addEventListener("click", () => {
+          state.replay.isPlaying = !state.replay.isPlaying;
+          if (state.replay.isPlaying) {
+            window.replayTimer = setInterval(() => {
+              state.replay.lap = (state.replay.lap % state.replay.total) + 1;
+              renderAnalyzer();
+            }, 800);
+          } else {
+            clearInterval(window.replayTimer);
+          }
+          renderAnalyzer();
+        });
+      }
+    }
+
+    // Render Debrief Card
+    function renderDebrief() {
+      const teamInfo = TEAMS_DATA[state.currentTeam] || TEAMS_DATA["McLaren"];
+      const [d1, d2] = teamInfo.drivers;
+      const deb = teamInfo.debrief;
+
+      document.getElementById("debrief-card").innerHTML = `
+        <div class="card-header">
+          <div class="card-title"><span>[ POST-SESSION ENGINEER DEBRIEF — ${state.currentTeam.toUpperCase()} ]</span></div>
+          <div class="card-meta"><span style="color:var(--success); font-weight:700;">[GROUNDED: VERIFIED]</span></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="border-left:2px solid var(--border-visible); padding-left:8px;">
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); text-transform:uppercase;">STRATEGIC OVERVIEW</div>
+            <div style="font-size:12px; color:var(--text-primary); margin-top:2px;">${deb.summary}</div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <div style="background-color:var(--surface-raised); border:1px solid var(--border); border-radius:4px; padding:6px 8px;">
+              <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; font-weight:700;">
+                <span>${d1}</span><span style="color:var(--success);">${deb.d1Gain}</span>
+              </div>
+              <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">LOSS: <span style="color:var(--accent);">${deb.d1Loss}</span></div>
+              <div style="font-size:10px; color:var(--text-disabled); margin-top:2px;">${deb.d1Hypo}</div>
+            </div>
+            <div style="background-color:var(--surface-raised); border:1px solid var(--border); border-radius:4px; padding:6px 8px;">
+              <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; font-weight:700;">
+                <span>${d2}</span><span style="color:var(--success);">${deb.d2Gain}</span>
+              </div>
+              <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">LOSS: <span style="color:var(--accent);">${deb.d2Loss}</span></div>
+              <div style="font-size:10px; color:var(--text-disabled); margin-top:2px;">${deb.d2Hypo}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Dynamic Team-Aware AI Intercom Chips
+    function renderIntercom() {
+      const teamInfo = TEAMS_DATA[state.currentTeam] || TEAMS_DATA["McLaren"];
+      const [d1, d2] = teamInfo.drivers;
+      const c = state.selectedCorner;
+
+      document.getElementById("intercom-title").textContent = `[ AI RACE ENGINEER INTERCOM — ${state.currentTeam.toUpperCase()} ]`;
+
+      let chips = [];
+      if (state.currentTeam === "Ferrari") {
+        chips = [
+          `Compare ${c} apex speeds: Leclerc vs Hamilton`,
+          `Analyze Hamilton vs Leclerc opening sector deltas`,
+          `Summarize Ferrari setup hypotheses for ${c}`,
+          `Ferrari tyre degradation on Medium compound`
+        ];
+      } else if (state.currentTeam === "McLaren") {
+        chips = [
+          `Compare ${c} braking: Piastri vs Norris`,
+          `Analyze McLaren sector deltas in ${c}`,
+          `Compare apex speed dwell ratio for Norris in ${c}`,
+          `McLaren Medium vs Hard degradation slope`
+        ];
+      } else if (state.currentTeam === "Mercedes") {
+        chips = [
+          `Compare Russell and Antonelli into ${c}`,
+          `What is Antonelli's tyre degradation on Hards?`,
+          `Analyze Mercedes teammate deltas in ${c}`,
+          `Mercedes straight-line speed derate signature`
+        ];
+      } else if (state.currentTeam === "Williams") {
+        chips = [
+          `Did Williams suffer energy clipping on straights?`,
+          `Compare Albon vs Sainz in ${c} apex speed`,
+          `Williams tyre degradation on Hard compound`,
+          `Analyze Albon vs Sainz segment deltas`
+        ];
+      } else {
+        chips = [
+          `Compare ${c} apex speeds: ${d1} vs ${d2}`,
+          `Analyze ${state.currentTeam} teammate segment deltas`,
+          `What is ${d1}'s tyre degradation slope?`,
+          `Did ${state.currentTeam} suffer straight-line energy clipping?`
+        ];
+      }
+
+      document.getElementById("quick-chips").innerHTML = chips.map(ch => `
+        <button class="chip-btn" data-chip="${ch}">${ch}</button>
+      `).join("");
+
+      document.querySelectorAll(".chip-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          sendChat(btn.getAttribute("data-chip"));
+        });
+      });
+    }
+
+    function sendChat(text) {
+      const stream = document.getElementById("messages-stream");
+      const timeStr = new Date().toUTCString().slice(17, 25);
+      
+      // User message
+      stream.innerHTML += `
+        <div class="message-item user">
+          <div class="message-meta"><span>[ PIT WALL / ${state.currentTeam} ]</span><span>${timeStr}</span></div>
+          <div class="message-text">${text}</div>
+        </div>
+      `;
+
+      // Simulated grounded race engineer response
+      setTimeout(() => {
+        const teamInfo = TEAMS_DATA[state.currentTeam] || TEAMS_DATA["McLaren"];
+        const [d1, d2] = teamInfo.drivers;
+        let reply = "";
+
+        if (text.includes("Compare") && text.includes("apex")) {
+          reply = `In ${state.selectedCorner}, ${d1} carries a minimum apex speed of 165 km/h (IQR ±2.4 km/h) anchoring 78.9m before corner, while ${d2} achieves 161 km/h (IQR ±3.0 km/h) braking at 94.4m before corner. Delta is +4 km/h favoring ${d1} due to earlier rotation.`;
+        } else if (text.includes("tyre") || text.includes("degradation")) {
+          reply = `Theil-Sen fuel-corrected regression indicates ${d1} loses 0.025 s/lap on Hard compound over 22 laps (residual std 0.14s), compared to ${d2} losing 0.027 s/lap. Pace delta remains stable within 0.05s spread.`;
+        } else if (text.includes("clipping") || text.includes("energy")) {
+          reply = `Straight-line analysis detects speed loss of -12.8 km/h at full throttle before braking zone on straight_after_T8, triggering clipping flag (State of Charge depletion). Aerodynamic drag accounts for only 2.1 km/h.`;
+        } else {
+          reply = `Telemetry facts confirm largest teammate gap occurs in segment ${state.selectedCorner}-${CORNERS[(CORNERS.indexOf(state.selectedCorner)+1)%14]} with a statistically significant delta of +0.142s. Setup telemetry confirms stable mechanical platform.`;
+        }
+
+        stream.innerHTML += `
+          <div class="message-item assistant">
+            <div class="message-meta"><span>[ RACE ENGINEER ]</span><span>${new Date().toUTCString().slice(17, 25)}</span><span class="badge-grounded">[GROUNDED]</span></div>
+            <div class="message-text">${reply}</div>
+          </div>
+        `;
+        stream.scrollTop = stream.scrollHeight;
+      }, 400);
+
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    document.getElementById("send-btn").addEventListener("click", () => {
+      const input = document.getElementById("chat-input");
+      if (input.value.trim()) {
+        sendChat(input.value.trim());
+        input.value = "";
+      }
+    });
+
+    document.getElementById("chat-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.value.trim()) {
+        sendChat(e.target.value.trim());
+        e.target.value = "";
+      }
+    });
+
+    // Tab Switcher
+    document.querySelectorAll(".nav-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav-tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.activeTab = btn.getAttribute("data-tab");
+        renderAnalyzer();
+      });
+    });
+
+    function renderAll() {
+      renderCornerStrip();
+      renderTeammates();
+      renderAnalyzer();
+      renderDebrief();
+      renderIntercom();
+    }
+
+    // Init
+    renderAll();
+  </script>
+</body>
+</html>

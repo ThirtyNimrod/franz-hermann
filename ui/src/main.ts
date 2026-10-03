@@ -18,6 +18,7 @@ import { renderEngineerIntercom } from "./components/EngineerIntercom";
 import { renderHeader } from "./components/Header";
 import {
   renderTelemetryAnalyzer,
+  type ReplayState,
   type TelemetryTab,
 } from "./components/TelemetryAnalyzer";
 import type {
@@ -33,10 +34,10 @@ import type {
 
 class AppState {
   sessions: SessionMetadata[] = [];
-  currentSessionId: string = "2026_01_FP2";
+  currentSessionId: string = "2026_01_R";
   teams: TeamDriverInfo[] = [];
   currentTeam: string = "McLaren";
-  currentRunType: "push" | "long_run" = "push";
+  currentRunType: "push" | "long_run" = "long_run";
   corners: string[] = [];
   selectedCorner: string = "T1";
   cornerMetrics: CornerMetric[] = [];
@@ -50,9 +51,16 @@ class AppState {
   isTransmitting: boolean = false;
   currentTheme: "light" | "dark" = "light";
   selectedTelemetryTab: TelemetryTab = "segments";
+  replayState: ReplayState = {
+    currentLap: 1,
+    totalLaps: 58,
+    isPlaying: false,
+    playbackSpeed: 1,
+  };
 }
 
 const state = new AppState();
+let replayInterval: number | null = null;
 
 // Initialize App
 async function init() {
@@ -81,8 +89,10 @@ async function init() {
   try {
     state.sessions = await fetchSessions();
     if (state.sessions.length > 0) {
+      // Prioritize Race if available, else FP2
+      const race = state.sessions.find((s) => s.session_id === "2026_01_R");
       const melbourne = state.sessions.find((s) => s.session_id === "2026_01_FP2");
-      state.currentSessionId = melbourne ? melbourne.session_id : state.sessions[0].session_id;
+      state.currentSessionId = race ? race.session_id : (melbourne ? melbourne.session_id : state.sessions[0].session_id);
     }
 
     await loadSessionData(state.currentSessionId);
@@ -105,6 +115,11 @@ async function loadSessionData(sessionId: string) {
     state.corners = await fetchCorners(sessionId);
     if (state.corners.length > 0 && !state.corners.includes(state.selectedCorner)) {
       state.selectedCorner = state.corners[0];
+    }
+
+    // Default to long_run if race session
+    if (sessionId.endsWith("_R")) {
+      state.currentRunType = "long_run";
     }
 
     await loadTeamData();
@@ -156,6 +171,9 @@ async function loadTeamData() {
 }
 
 function renderAll(filteredHighlights?: SessionHighlight[]) {
+  const currentTeamInfo = state.teams.find((t) => t.team === state.currentTeam);
+  const activeDrivers = currentTeamInfo?.drivers || [];
+
   // 1. Header
   const headerMount = document.querySelector("#header-mount") as HTMLElement;
   if (headerMount) {
@@ -212,7 +230,7 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
     );
   }
 
-  // 3. Telemetry Analyzer (Bottom Left — Segment Deltas, Tyre Deg, 2026 Energy Tabs)
+  // 3. Telemetry Analyzer (Bottom Left — Segment Deltas, Tyre Deg, 2026 Energy, Race Replay)
   const analyzerMount = document.querySelector("#telemetry-analyzer-mount") as HTMLElement;
   if (analyzerMount) {
     renderTelemetryAnalyzer(
@@ -223,6 +241,7 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
       state.tyreStints,
       state.selectedCompound,
       state.energySignatures,
+      state.replayState,
       {
         onTabChange: (tab) => {
           state.selectedTelemetryTab = tab;
@@ -246,6 +265,23 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
           );
           renderAll(filteredHighlights);
         },
+        onReplayLapChange: (lap) => {
+          state.replayState.currentLap = lap;
+          renderAll(filteredHighlights);
+        },
+        onReplayPlayToggle: () => {
+          state.replayState.isPlaying = !state.replayState.isPlaying;
+          if (state.replayState.isPlaying) {
+            if (replayInterval) clearInterval(replayInterval);
+            replayInterval = window.setInterval(() => {
+              state.replayState.currentLap = (state.replayState.currentLap % state.replayState.totalLaps) + 1;
+              renderAll(filteredHighlights);
+            }, 800);
+          } else {
+            if (replayInterval) clearInterval(replayInterval);
+          }
+          renderAll(filteredHighlights);
+        },
       }
     );
   }
@@ -256,13 +292,21 @@ function renderAll(filteredHighlights?: SessionHighlight[]) {
     renderDebriefCard(debriefMount, filteredHighlights || state.highlights);
   }
 
-  // 5. Engineer Intercom (Bottom Right — Flex-1 with auto-scroll)
+  // 5. Engineer Intercom (Bottom Right — Flex-1 with dynamic team chips)
   const intercomMount = document.querySelector("#intercom-mount") as HTMLElement;
   if (intercomMount) {
-    renderEngineerIntercom(intercomMount, state.messages, state.isTransmitting, {
-      onSendMessage: (text) => handleChat(text),
-      onChipClick: (text) => handleChat(text),
-    });
+    renderEngineerIntercom(
+      intercomMount,
+      state.messages,
+      state.isTransmitting,
+      state.currentTeam,
+      activeDrivers,
+      state.selectedCorner,
+      {
+        onSendMessage: (text) => handleChat(text),
+        onChipClick: (text) => handleChat(text),
+      }
+    );
   }
 }
 
